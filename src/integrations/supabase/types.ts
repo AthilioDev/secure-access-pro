@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_users: {
+        Row: {
+          created_at: string
+          id: string
+          last_login: string | null
+          password_hash: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_login?: string | null
+          password_hash: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_login?: string | null
+          password_hash?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      licenses: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          hwid: string | null
+          id: string
+          ip_address: string | null
+          last_validated: string | null
+          license_key: string
+          owner_email: string | null
+          owner_name: string
+          resource_name: string
+          status: string
+          updated_at: string
+          validation_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          last_validated?: string | null
+          license_key?: string
+          owner_email?: string | null
+          owner_name: string
+          resource_name: string
+          status?: string
+          updated_at?: string
+          validation_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          last_validated?: string | null
+          license_key?: string
+          owner_email?: string | null
+          owner_name?: string
+          resource_name?: string
+          status?: string
+          updated_at?: string
+          validation_count?: number | null
+        }
+        Relationships: []
+      }
+      validation_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          hwid: string | null
+          id: string
+          ip_address: string | null
+          license_id: string | null
+          license_key: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          license_id?: string | null
+          license_key: string
+          success: boolean
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          license_id?: string | null
+          license_key?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_logs_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

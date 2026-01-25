@@ -37,12 +37,14 @@ const Header = () => {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Github className="w-4 h-4" />
-              GitHub
+            <Button variant="ghost" size="sm" className="gap-2" asChild>
+              <a href="https://github.com/AthilioDev/auth-guard-pro" target="_blank" rel="noopener noreferrer">
+                <Github className="w-4 h-4" />
+                GitHub
+              </a>
             </Button>
-            <Button variant="hero" size="sm">
-              Começar Agora
+            <Button variant="hero" size="sm" asChild>
+              <a href="/login">Acessar Painel</a>
             </Button>
           </div>
 
