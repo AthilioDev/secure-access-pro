@@ -243,7 +243,7 @@ const Admin = () => {
             <div className="flex items-center gap-3">
               <Shield className="w-8 h-8 text-primary" />
               <div>
-                <h1 className="text-xl font-bold gradient-text">Auth Guard Pro</h1>
+                <h1 className="text-xl font-bold gradient-text">Athilio Auth</h1>
                 <p className="text-xs text-muted-foreground">Painel Administrativo</p>
               </div>
             </div>
