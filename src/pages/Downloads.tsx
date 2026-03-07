@@ -316,7 +316,7 @@ const Downloads = () => {
             </div>
             <div className="space-y-2">
               <div className="text-foreground font-semibold">2. Verificação</div>
-              <p>Quando o server iniciar, o script faz uma requisição HTTP para a API do Athilio Auth verificando a licença.</p>
+              <p>Quando o server iniciar, o <code className="text-primary bg-secondary/50 px-1 rounded">server.lua</code> lê o <code className="text-primary bg-secondary/50 px-1 rounded">license.json</code> e faz uma requisição HTTP para a API.</p>
             </div>
             <div className="space-y-2">
               <div className="text-foreground font-semibold">3. Resultado</div>
