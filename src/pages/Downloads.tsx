@@ -7,7 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
-const SERVER_LUA_TEMPLATE = (apiUrl: string, licenseKey: string, scriptName: string) => `--[[
+const LICENSE_JSON_TEMPLATE = (licenseKey: string, scriptName: string) => JSON.stringify({
+  license_key: licenseKey,
+  script_name: scriptName
+}, null, 2);
+
+const SERVER_LUA_TEMPLATE = (apiUrl: string) => `--[[
     ╔═══════════════════════════════════════════════╗
     ║          Athilio Auth - License Guard          ║
     ║        Secure License Verification System      ║
@@ -18,12 +23,12 @@ const SERVER_LUA_TEMPLATE = (apiUrl: string, licenseKey: string, scriptName: str
 ]]--
 
 local _0x = {
-    _k = "${licenseKey}",
-    _s = "${scriptName}",
     _u = "${apiUrl}/functions/v1/verify-license",
     _auth = false,
     _timeout = 15000,
-    _retries = 3
+    _retries = 3,
+    _k = nil,
+    _s = nil
 }
 
 -- IP Whitelist (optional - leave empty to skip IP check)
@@ -31,6 +36,41 @@ local _allowedIPs = {
     -- "1.1.1.1",
     -- "192.168.1.1",
 }
+
+-- ============================================
+--  Read license.json
+-- ============================================
+local function _loadLicense()
+    local resourcePath = GetResourcePath(GetCurrentResourceName())
+    local filePath = resourcePath .. "/license.json"
+
+    local file = io.open(filePath, "r")
+    if not file then
+        return nil, "license.json not found in resource folder"
+    end
+
+    local content = file:read("*a")
+    file:close()
+
+    if not content or content == "" then
+        return nil, "license.json is empty"
+    end
+
+    local success, data = pcall(json.decode, content)
+    if not success or not data then
+        return nil, "license.json has invalid JSON format"
+    end
+
+    if not data.license_key or data.license_key == "" then
+        return nil, "license.json is missing 'license_key'"
+    end
+
+    if not data.script_name or data.script_name == "" then
+        return nil, "license.json is missing 'script_name'"
+    end
+
+    return data, nil
+end
 
 local function _log(level, msg)
     if level == "success" then
@@ -155,6 +195,21 @@ end
 -- Run validation on resource start
 CreateThread(function()
     Wait(2000) -- Wait for server to be ready
+
+    -- Load license from license.json
+    local licenseData, err = _loadLicense()
+    if not licenseData then
+        _log("error", "Failed to load license: " .. (err or "unknown error"))
+        _log("error", "Make sure license.json exists in the resource folder with:")
+        _log("error", '  { "license_key": "YOUR_KEY", "script_name": "your-script" }')
+        _stopResource()
+        return
+    end
+
+    _0x._k = licenseData.license_key
+    _0x._s = licenseData.script_name
+
+    _log("info", "Loaded license for script: " .. _0x._s)
     _validate()
 end)
 
@@ -180,7 +235,8 @@ const Downloads = () => {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  const generatedCode = SERVER_LUA_TEMPLATE(apiUrl, licenseKey, scriptName);
+  const generatedCode = SERVER_LUA_TEMPLATE(apiUrl);
+  const generatedLicenseJson = LICENSE_JSON_TEMPLATE(licenseKey, scriptName);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedCode);
@@ -189,17 +245,26 @@ const Downloads = () => {
     toast({ title: "Copiado!", description: "Código copiado para a área de transferência" });
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([generatedCode], { type: "text/plain" });
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `athilio_auth_${scriptName}.lua`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: "Download iniciado!", description: `athilio_auth_${scriptName}.lua` });
+  };
+
+  const handleDownloadLua = () => {
+    downloadFile(generatedCode, "server.lua");
+    toast({ title: "Download iniciado!", description: "server.lua" });
+  };
+
+  const handleDownloadLicense = () => {
+    downloadFile(generatedLicenseJson, "license.json");
+    toast({ title: "Download iniciado!", description: "license.json" });
   };
 
   if (authLoading) {
@@ -247,11 +312,11 @@ const Downloads = () => {
           <div className="grid md:grid-cols-3 gap-6 text-sm text-muted-foreground">
             <div className="space-y-2">
               <div className="text-foreground font-semibold">1. Configuração</div>
-              <p>Adicione o arquivo <code className="text-primary bg-secondary/50 px-1 rounded">server.lua</code> gerado abaixo na pasta do seu resource FiveM.</p>
+              <p>Coloque <code className="text-primary bg-secondary/50 px-1 rounded">server.lua</code> e <code className="text-primary bg-secondary/50 px-1 rounded">license.json</code> na pasta do seu resource FiveM.</p>
             </div>
             <div className="space-y-2">
               <div className="text-foreground font-semibold">2. Verificação</div>
-              <p>Quando o server iniciar, o script faz uma requisição HTTP para a API do Athilio Auth verificando a licença.</p>
+              <p>Quando o server iniciar, o <code className="text-primary bg-secondary/50 px-1 rounded">server.lua</code> lê o <code className="text-primary bg-secondary/50 px-1 rounded">license.json</code> e faz uma requisição HTTP para a API.</p>
             </div>
             <div className="space-y-2">
               <div className="text-foreground font-semibold">3. Resultado</div>
@@ -293,14 +358,18 @@ const Downloads = () => {
             </div>
           </div>
 
-          <div className="flex gap-3 mb-6">
+          <div className="flex flex-wrap gap-3 mb-6">
             <Button variant="outline" onClick={handleCopy}>
               {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-              {copied ? "Copiado!" : "Copiar Código"}
+              {copied ? "Copiado!" : "Copiar server.lua"}
             </Button>
-            <Button onClick={handleDownload} className="bg-foreground text-background hover:bg-foreground/90">
+            <Button onClick={handleDownloadLua} className="bg-foreground text-background hover:bg-foreground/90">
               <Download className="w-4 h-4 mr-2" />
               Baixar server.lua
+            </Button>
+            <Button onClick={handleDownloadLicense} className="bg-foreground text-background hover:bg-foreground/90">
+              <Download className="w-4 h-4 mr-2" />
+              Baixar license.json
             </Button>
           </div>
 
@@ -312,7 +381,7 @@ const Downloads = () => {
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
                 <div className="w-2.5 h-2.5 rounded-full bg-primary/70" />
               </div>
-              <span className="text-xs text-muted-foreground font-mono">athilio_auth_{scriptName}.lua</span>
+              <span className="text-xs text-muted-foreground font-mono">server.lua</span>
             </div>
             <div className="p-4 overflow-x-auto max-h-96 overflow-y-auto bg-background/50">
               <pre className="text-xs font-mono text-muted-foreground leading-relaxed whitespace-pre">
