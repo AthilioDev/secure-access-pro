@@ -312,7 +312,7 @@ const Downloads = () => {
           <div className="grid md:grid-cols-3 gap-6 text-sm text-muted-foreground">
             <div className="space-y-2">
               <div className="text-foreground font-semibold">1. Configuração</div>
-              <p>Adicione o arquivo <code className="text-primary bg-secondary/50 px-1 rounded">server.lua</code> gerado abaixo na pasta do seu resource FiveM.</p>
+              <p>Coloque <code className="text-primary bg-secondary/50 px-1 rounded">server.lua</code> e <code className="text-primary bg-secondary/50 px-1 rounded">license.json</code> na pasta do seu resource FiveM.</p>
             </div>
             <div className="space-y-2">
               <div className="text-foreground font-semibold">2. Verificação</div>
