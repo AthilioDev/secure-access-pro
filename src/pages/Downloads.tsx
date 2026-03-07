@@ -7,7 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
-const SERVER_LUA_TEMPLATE = (apiUrl: string, licenseKey: string, scriptName: string) => `--[[
+const LICENSE_JSON_TEMPLATE = (licenseKey: string, scriptName: string) => JSON.stringify({
+  license_key: licenseKey,
+  script_name: scriptName
+}, null, 2);
+
+const SERVER_LUA_TEMPLATE = (apiUrl: string) => `--[[
     ╔═══════════════════════════════════════════════╗
     ║          Athilio Auth - License Guard          ║
     ║        Secure License Verification System      ║
@@ -18,12 +23,12 @@ const SERVER_LUA_TEMPLATE = (apiUrl: string, licenseKey: string, scriptName: str
 ]]--
 
 local _0x = {
-    _k = "${licenseKey}",
-    _s = "${scriptName}",
     _u = "${apiUrl}/functions/v1/verify-license",
     _auth = false,
     _timeout = 15000,
-    _retries = 3
+    _retries = 3,
+    _k = nil,
+    _s = nil
 }
 
 -- IP Whitelist (optional - leave empty to skip IP check)
@@ -31,6 +36,41 @@ local _allowedIPs = {
     -- "1.1.1.1",
     -- "192.168.1.1",
 }
+
+-- ============================================
+--  Read license.json
+-- ============================================
+local function _loadLicense()
+    local resourcePath = GetResourcePath(GetCurrentResourceName())
+    local filePath = resourcePath .. "/license.json"
+
+    local file = io.open(filePath, "r")
+    if not file then
+        return nil, "license.json not found in resource folder"
+    end
+
+    local content = file:read("*a")
+    file:close()
+
+    if not content or content == "" then
+        return nil, "license.json is empty"
+    end
+
+    local success, data = pcall(json.decode, content)
+    if not success or not data then
+        return nil, "license.json has invalid JSON format"
+    end
+
+    if not data.license_key or data.license_key == "" then
+        return nil, "license.json is missing 'license_key'"
+    end
+
+    if not data.script_name or data.script_name == "" then
+        return nil, "license.json is missing 'script_name'"
+    end
+
+    return data, nil
+end
 
 local function _log(level, msg)
     if level == "success" then
@@ -155,6 +195,21 @@ end
 -- Run validation on resource start
 CreateThread(function()
     Wait(2000) -- Wait for server to be ready
+
+    -- Load license from license.json
+    local licenseData, err = _loadLicense()
+    if not licenseData then
+        _log("error", "Failed to load license: " .. (err or "unknown error"))
+        _log("error", "Make sure license.json exists in the resource folder with:")
+        _log("error", '  { "license_key": "YOUR_KEY", "script_name": "your-script" }')
+        _stopResource()
+        return
+    end
+
+    _0x._k = licenseData.license_key
+    _0x._s = licenseData.script_name
+
+    _log("info", "Loaded license for script: " .. _0x._s)
     _validate()
 end)
 
