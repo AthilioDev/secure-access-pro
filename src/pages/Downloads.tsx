@@ -381,7 +381,7 @@ const Downloads = () => {
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
                 <div className="w-2.5 h-2.5 rounded-full bg-primary/70" />
               </div>
-              <span className="text-xs text-muted-foreground font-mono">athilio_auth_{scriptName}.lua</span>
+              <span className="text-xs text-muted-foreground font-mono">server.lua</span>
             </div>
             <div className="p-4 overflow-x-auto max-h-96 overflow-y-auto bg-background/50">
               <pre className="text-xs font-mono text-muted-foreground leading-relaxed whitespace-pre">
