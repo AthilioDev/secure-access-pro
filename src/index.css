@@ -98,11 +98,11 @@
   }
 
   .text-glow {
-    text-shadow: 0 0 20px hsl(160 84% 39% / 0.5);
+    text-shadow: 0 0 20px hsl(0 0% 100% / 0.4);
   }
 
   .line-glow {
     @apply h-px w-full;
-    background: linear-gradient(90deg, transparent, hsl(160 84% 39% / 0.5), transparent);
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.3), transparent);
   }
 }
