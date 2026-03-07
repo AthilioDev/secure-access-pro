@@ -249,6 +249,10 @@ const Admin = () => {
             </div>
 
             <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" onClick={() => navigate("/downloads")}>
+                <Download className="w-4 h-4 mr-2" />
+                Downloads
+              </Button>
               <span className="text-sm text-muted-foreground">
                 Olá, <span className="text-foreground font-medium">{user?.username}</span>
               </span>
