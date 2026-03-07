@@ -235,7 +235,8 @@ const Downloads = () => {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  const generatedCode = SERVER_LUA_TEMPLATE(apiUrl, licenseKey, scriptName);
+  const generatedCode = SERVER_LUA_TEMPLATE(apiUrl);
+  const generatedLicenseJson = LICENSE_JSON_TEMPLATE(licenseKey, scriptName);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedCode);
@@ -244,17 +245,26 @@ const Downloads = () => {
     toast({ title: "Copiado!", description: "Código copiado para a área de transferência" });
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([generatedCode], { type: "text/plain" });
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `athilio_auth_${scriptName}.lua`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: "Download iniciado!", description: `athilio_auth_${scriptName}.lua` });
+  };
+
+  const handleDownloadLua = () => {
+    downloadFile(generatedCode, "server.lua");
+    toast({ title: "Download iniciado!", description: "server.lua" });
+  };
+
+  const handleDownloadLicense = () => {
+    downloadFile(generatedLicenseJson, "license.json");
+    toast({ title: "Download iniciado!", description: "license.json" });
   };
 
   if (authLoading) {
