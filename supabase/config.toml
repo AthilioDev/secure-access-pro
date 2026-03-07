@@ -2,3 +2,6 @@ project_id = "nwebrckdlbjzueqehkpz"
 
 [functions.admin-auth]
 verify_jwt = false
+
+[functions.verify-license]
+verify_jwt = false
