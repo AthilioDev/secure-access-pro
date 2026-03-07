@@ -6,42 +6,42 @@
 
 @layer base {
   :root {
-    --background: 220 20% 4%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 3%;
+    --foreground: 0 0% 95%;
 
-    --card: 220 20% 6%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 220 20% 6%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 160 84% 39%;
-    --primary-foreground: 220 20% 4%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 3%;
 
-    --secondary: 220 20% 12%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 20% 12%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50%;
 
-    --accent: 185 94% 43%;
-    --accent-foreground: 220 20% 4%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 95%;
 
-    --border: 220 20% 14%;
-    --input: 220 20% 14%;
-    --ring: 160 84% 39%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 100%;
 
     --radius: 0.75rem;
 
     /* Custom tokens */
-    --glow-primary: 0 0 40px hsl(160 84% 39% / 0.3);
-    --glow-accent: 0 0 40px hsl(185 94% 43% / 0.3);
-    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(185 94% 43%));
-    --gradient-dark: linear-gradient(180deg, hsl(220 20% 6%), hsl(220 20% 4%));
-    --gradient-card: linear-gradient(145deg, hsl(220 20% 8%), hsl(220 20% 5%));
+    --glow-primary: 0 0 40px hsl(0 0% 100% / 0.15);
+    --glow-accent: 0 0 40px hsl(0 0% 100% / 0.1);
+    --gradient-primary: linear-gradient(135deg, hsl(0 0% 100%), hsl(0 0% 70%));
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 6%), hsl(0 0% 3%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 8%), hsl(0 0% 5%));
   }
 }
 
@@ -98,11 +98,11 @@
   }
 
   .text-glow {
-    text-shadow: 0 0 20px hsl(160 84% 39% / 0.5);
+    text-shadow: 0 0 20px hsl(0 0% 100% / 0.4);
   }
 
   .line-glow {
     @apply h-px w-full;
-    background: linear-gradient(90deg, transparent, hsl(160 84% 39% / 0.5), transparent);
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.3), transparent);
   }
 }

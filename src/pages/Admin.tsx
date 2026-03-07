@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { 
   Shield, LogOut, Plus, Key, Users, Activity, 
   Trash2, Edit2, Search, RefreshCw, Copy, Check,
-  AlertCircle, CheckCircle, XCircle, Clock
+  AlertCircle, CheckCircle, XCircle, Clock, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -243,12 +243,16 @@ const Admin = () => {
             <div className="flex items-center gap-3">
               <Shield className="w-8 h-8 text-primary" />
               <div>
-                <h1 className="text-xl font-bold gradient-text">Auth Guard Pro</h1>
+                <h1 className="text-xl font-bold gradient-text">Athilio Auth</h1>
                 <p className="text-xs text-muted-foreground">Painel Administrativo</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" onClick={() => navigate("/downloads")}>
+                <Download className="w-4 h-4 mr-2" />
+                Downloads
+              </Button>
               <span className="text-sm text-muted-foreground">
                 Olá, <span className="text-foreground font-medium">{user?.username}</span>
               </span>
