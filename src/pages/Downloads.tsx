@@ -358,14 +358,18 @@ const Downloads = () => {
             </div>
           </div>
 
-          <div className="flex gap-3 mb-6">
+          <div className="flex flex-wrap gap-3 mb-6">
             <Button variant="outline" onClick={handleCopy}>
               {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-              {copied ? "Copiado!" : "Copiar Código"}
+              {copied ? "Copiado!" : "Copiar server.lua"}
             </Button>
-            <Button onClick={handleDownload} className="bg-foreground text-background hover:bg-foreground/90">
+            <Button onClick={handleDownloadLua} className="bg-foreground text-background hover:bg-foreground/90">
               <Download className="w-4 h-4 mr-2" />
               Baixar server.lua
+            </Button>
+            <Button onClick={handleDownloadLicense} className="bg-foreground text-background hover:bg-foreground/90">
+              <Download className="w-4 h-4 mr-2" />
+              Baixar license.json
             </Button>
           </div>
 
