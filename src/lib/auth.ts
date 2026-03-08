@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface AdminUser {
   id: string;
   username: string;
+  role: string;
+  plan: string;
 }
 
 export interface AuthState {
@@ -35,7 +37,7 @@ export const clearStoredAuth = (): void => {
 
 export const loginAdmin = async (username: string, password: string): Promise<AuthState> => {
   const { data, error } = await supabase.functions.invoke('admin-auth', {
-    body: { username, password }
+    body: { username, password, action: 'login' }
   });
 
   if (error || !data?.success) {
@@ -54,4 +56,32 @@ export const loginAdmin = async (username: string, password: string): Promise<Au
 
 export const logoutAdmin = (): void => {
   clearStoredAuth();
+};
+
+export const getPlanLimits = (plan: string): number => {
+  switch (plan) {
+    case 'master_plus': return -1; // unlimited
+    case 'master': return 50;
+    case 'standard':
+    default: return 5;
+  }
+};
+
+export const getPlanLabel = (plan: string): string => {
+  switch (plan) {
+    case 'master_plus': return 'Master++';
+    case 'master': return 'Master';
+    case 'standard':
+    default: return 'Padrão';
+  }
+};
+
+export const getRoleLabel = (role: string): string => {
+  switch (role) {
+    case 'master_plus': return 'Admin Master++';
+    case 'master': return 'Admin Master';
+    case 'admin': return 'Admin';
+    case 'staff':
+    default: return 'Staff';
+  }
 };

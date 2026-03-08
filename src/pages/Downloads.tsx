@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const LICENSE_JSON_TEMPLATE = (licenseKey: string, scriptName: string) => JSON.stringify({
   license_key: licenseKey,
-  script_name: scriptName
+  script_name: scriptName,
+  server_port: 30120
 }, null, 2);
 
 const SERVER_LUA_TEMPLATE = (apiUrl: string) => `--[[
@@ -28,7 +29,8 @@ local _0x = {
     _timeout = 15000,
     _retries = 3,
     _k = nil,
-    _s = nil
+    _s = nil,
+    _p = nil
 }
 
 -- IP Whitelist (optional - leave empty to skip IP check)
@@ -122,6 +124,7 @@ local function _validate(attempt)
     local payload = json.encode({
         license_key = _0x._k,
         server_ip = serverIP,
+        server_port = _0x._p,
         script_name = _0x._s
     })
 
@@ -208,6 +211,7 @@ CreateThread(function()
 
     _0x._k = licenseData.license_key
     _0x._s = licenseData.script_name
+    _0x._p = licenseData.server_port or 30120
 
     _log("info", "Loaded license for script: " .. _0x._s)
     _validate()
