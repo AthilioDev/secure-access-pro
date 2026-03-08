@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const LICENSE_JSON_TEMPLATE = (licenseKey: string, scriptName: string) => JSON.stringify({
   license_key: licenseKey,
-  script_name: scriptName
+  script_name: scriptName,
+  server_port: 30120
 }, null, 2);
 
 const SERVER_LUA_TEMPLATE = (apiUrl: string) => `--[[
