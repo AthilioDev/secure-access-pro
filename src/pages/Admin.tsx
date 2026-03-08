@@ -98,6 +98,7 @@ const Admin = () => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
+  const [showAdminControls, setShowAdminControls] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editRole, setEditRole] = useState("");
   const [editPlan, setEditPlan] = useState("");
