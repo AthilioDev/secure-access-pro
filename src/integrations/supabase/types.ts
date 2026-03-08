@@ -53,6 +53,39 @@ export type Database = {
         }
         Relationships: []
       }
+      announcements: {
+        Row: {
+          author_id: string
+          author_name: string | null
+          content: string
+          created_at: string | null
+          id: string
+          is_pinned: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          author_name?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          author_name?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -82,6 +115,38 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      discord_bot_logs: {
+        Row: {
+          action: string
+          bot_id: string | null
+          created_at: string | null
+          details: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          bot_id?: string | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          bot_id?: string | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_bot_logs_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "discord_bots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discord_bots: {
         Row: {
@@ -141,6 +206,8 @@ export type Database = {
           ip_address: string | null
           last_validated: string | null
           license_key: string
+          max_ips: number | null
+          notes: string | null
           owner_email: string | null
           owner_name: string | null
           port: number | null
@@ -158,6 +225,8 @@ export type Database = {
           ip_address?: string | null
           last_validated?: string | null
           license_key: string
+          max_ips?: number | null
+          notes?: string | null
           owner_email?: string | null
           owner_name?: string | null
           port?: number | null
@@ -175,6 +244,8 @@ export type Database = {
           ip_address?: string | null
           last_validated?: string | null
           license_key?: string
+          max_ips?: number | null
+          notes?: string | null
           owner_email?: string | null
           owner_name?: string | null
           port?: number | null
@@ -206,6 +277,86 @@ export type Database = {
           ip_address?: string | null
           success?: boolean
           username?: string
+        }
+        Relationships: []
+      }
+      ticket_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          sender_id: string
+          sender_name: string
+          sender_role: string | null
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          sender_id: string
+          sender_name: string
+          sender_role?: string | null
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_name?: string
+          sender_role?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          assigned_name: string | null
+          assigned_to: string | null
+          closed_at: string | null
+          created_at: string | null
+          id: string
+          priority: string | null
+          status: string
+          subject: string
+          updated_at: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          assigned_name?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          created_at?: string | null
+          id?: string
+          priority?: string | null
+          status?: string
+          subject: string
+          updated_at?: string | null
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          assigned_name?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          created_at?: string | null
+          id?: string
+          priority?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string | null
+          user_id?: string
+          user_name?: string
         }
         Relationships: []
       }
