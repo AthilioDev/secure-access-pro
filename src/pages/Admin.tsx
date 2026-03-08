@@ -218,9 +218,21 @@ const Admin = () => {
       const lic = licenses.find(l => l.id === id);
       await supabase.from('licenses').delete().eq('id', id);
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'DELETE_LICENSE', details: `${id}` } });
-      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_deleted', created_by_user_id: lic?.created_by, license_data: { license_key: lic?.license_key, owner: lic?.owner_name } } });
-      toast({ title: "Licença excluída" }); setManageLicense(null); fetchData();
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
+      await supabase.functions.invoke('admin-auth', {
+        body: {
+          action: 'fire_webhooks',
+          event_type: 'license_deleted',
+          created_by_user_id: lic?.created_by || user?.id,
+          initiator_user_id: user?.id,
+          license_data: { license_key: lic?.license_key, owner: lic?.owner_name }
+        }
+      });
+      toast({ title: "Licença excluída" });
+      setManageLicense(null);
+      fetchData();
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
   };
 
   const updateRole = async (tid: string) => {
