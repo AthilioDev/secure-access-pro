@@ -194,11 +194,24 @@ Deno.serve(async (req) => {
     // =====================
     if (action === 'update_user_role') {
       const { target_user_id, new_role, new_plan, admin_user_id, admin_username } = body;
-      
-      if (!target_user_id || !new_role || !new_plan) {
+
+      if (!target_user_id || !new_role || !new_plan || !admin_user_id) {
         return new Response(
           JSON.stringify({ success: false, error: 'Missing fields' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      const { data: actor, error: actorError } = await supabase
+        .from('admin_users')
+        .select('id, role')
+        .eq('id', admin_user_id)
+        .maybeSingle();
+
+      if (actorError || !actor || actor.role !== 'master_plus') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { status: 403, headers: jsonHeaders }
         );
       }
 
@@ -210,7 +223,7 @@ Deno.serve(async (req) => {
       if (error) {
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to update user' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: jsonHeaders }
         );
       }
 
@@ -224,7 +237,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
