@@ -416,7 +416,7 @@ const Admin = () => {
             </div>
 
             {/* Table */}
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="rounded-2xl border border-border overflow-hidden bg-card/40">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
