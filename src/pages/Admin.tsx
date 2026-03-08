@@ -183,14 +183,33 @@ const Admin = () => {
 
   const setStatus = async (id: string, status: string) => {
     try {
-      const { error } = await supabase.from('licenses').update({ status }).eq('id', id);
-      if (error) throw error;
       const lic = licenses.find(l => l.id === id);
+      const payload: { status: string; created_by?: string } = { status };
+      if (!lic?.created_by && user?.id) payload.created_by = user.id;
+
+      const { error } = await supabase.from('licenses').update(payload).eq('id', id);
+      if (error) throw error;
+
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'UPDATE_LICENSE_STATUS', details: `${id} → ${status}` } });
       const evtMap: Record<string, string> = { suspended: 'license_suspended', revoked: 'license_revoked', active: 'license_edited' };
-      if (evtMap[status]) await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: evtMap[status], created_by_user_id: lic?.created_by, license_data: { license_key: lic?.license_key, owner: lic?.owner_name, status } } });
-      toast({ title: "Status atualizado" }); setManageLicense(null); fetchData();
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
+      if (evtMap[status]) {
+        await supabase.functions.invoke('admin-auth', {
+          body: {
+            action: 'fire_webhooks',
+            event_type: evtMap[status],
+            created_by_user_id: lic?.created_by || user?.id,
+            initiator_user_id: user?.id,
+            license_data: { license_key: lic?.license_key, owner: lic?.owner_name, status }
+          }
+        });
+      }
+
+      toast({ title: "Status atualizado" });
+      setManageLicense(null);
+      fetchData();
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
   };
 
   const delLicense = async (id: string) => {
