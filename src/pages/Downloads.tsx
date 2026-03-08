@@ -211,6 +211,7 @@ CreateThread(function()
 
     _0x._k = licenseData.license_key
     _0x._s = licenseData.script_name
+    _0x._p = licenseData.server_port or 30120
 
     _log("info", "Loaded license for script: " .. _0x._s)
     _validate()
