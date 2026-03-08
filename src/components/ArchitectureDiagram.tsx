@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
 
 const steps = [
-  { num: "01", title: "Instalação", desc: "Coloque os arquivos server.lua e license.json na pasta do seu resource FiveM." },
-  { num: "02", title: "Configuração", desc: "Insira a chave de licença e o nome do script no arquivo license.json." },
-  { num: "03", title: "Validação Automática", desc: "Ao iniciar o server, o sistema valida licença, IP e porta automaticamente." },
-  { num: "04", title: "Proteção Ativa", desc: "Se válido, o script roda normalmente. Se inválido, o resource é parado." },
+  { num: "01", title: "Configure", desc: "Adicione os arquivos ao seu resource e insira sua chave de licença." },
+  { num: "02", title: "Ative", desc: "Inicie o servidor e a validação ocorre automaticamente em segundo plano." },
+  { num: "03", title: "Gerencie", desc: "Controle licenças, status e permissões pelo painel administrativo." },
+  { num: "04", title: "Monitore", desc: "Acompanhe acessos e receba notificações via webhooks em tempo real." },
 ];
 
 const ArchitectureDiagram = () => (
