@@ -11,7 +11,7 @@ const Header = () => {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2.5">
           <Shield className="w-6 h-6 text-foreground" />
-          <span className="text-base font-bold tracking-tight">Secure Access Pro</span>
+          <span className="text-base font-bold tracking-tight">Athilio Auth</span>
         </a>
 
         <nav className="hidden md:flex items-center gap-8">
