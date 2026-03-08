@@ -602,24 +602,30 @@ const Admin = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-4">
-        {/* ── Announcements Banner ── */}
-        {announcements.length > 0 && (
+        {/* ── Pinned Announcements Banner ── */}
+        {announcements.filter(a => a.is_pinned).length > 0 && (
           <div className="mb-4 space-y-2">
-            {announcements.filter(a => a.is_pinned).slice(0, 2).map(ann => (
-              <div key={ann.id} className="glass-card p-3 flex items-start gap-3">
-                <Pin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold">{ann.title}</span>
-                    <span className="text-[9px] text-muted-foreground">{fmtShort(ann.created_at)}</span>
+            {announcements.filter(a => a.is_pinned).slice(0, 3).map(ann => (
+              <div key={ann.id} className="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-r from-card/80 via-card/60 to-card/80 backdrop-blur-sm p-4">
+                <div className="absolute inset-0 bg-gradient-to-r from-foreground/[0.02] to-transparent pointer-events-none" />
+                <div className="relative flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-foreground/5 border border-border/30 flex items-center justify-center shrink-0">
+                    <Pin className="w-3.5 h-3.5 text-foreground/60" />
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{ann.content}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold tracking-tight">{ann.title}</span>
+                      <span className="text-[8px] uppercase tracking-widest text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">Fixado</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 leading-relaxed">{ann.content}</p>
+                    <p className="text-[9px] text-muted-foreground/40 mt-1.5">por {ann.author_name} · {fmtShort(ann.created_at)}</p>
+                  </div>
+                  {isStaffOrAbove && (
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground/40 hover:text-destructive shrink-0 rounded-lg" onClick={() => deleteAnnouncement(ann.id)}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
-                {isStaffOrAbove && (
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => deleteAnnouncement(ann.id)}>
-                    <X className="w-3 h-3" />
-                  </Button>
-                )}
               </div>
             ))}
           </div>
