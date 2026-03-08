@@ -361,7 +361,7 @@ const Admin = () => {
           {/* ── LICENSES ── */}
           <TabsContent value="licenses">
             {planLimit !== -1 && (
-              <div className={`mb-4 p-3 rounded-md border text-xs ${canCreate ? 'border-border text-muted-foreground' : 'border-destructive/30 text-destructive'}`}>
+              <div className={`mb-4 p-3 rounded-2xl border text-xs ${canCreate ? 'border-border text-muted-foreground bg-card/40' : 'border-destructive/30 text-destructive bg-card/40'}`}>
                 {canCreate ? `${planLimit - usedToday} licenças restantes hoje (plano ${getPlanLabel(user?.plan || 'standard')})` : 'Limite diário atingido.'}
               </div>
             )}
