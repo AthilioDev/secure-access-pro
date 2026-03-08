@@ -17,26 +17,68 @@ export type Database = {
       admin_users: {
         Row: {
           created_at: string | null
+          daily_license_count: number
           email: string
           id: string
+          last_license_date: string | null
           last_login: string | null
           password_hash: string | null
+          plan: string
+          role: string
           username: string | null
         }
         Insert: {
           created_at?: string | null
+          daily_license_count?: number
           email: string
           id?: string
+          last_license_date?: string | null
           last_login?: string | null
           password_hash?: string | null
+          plan?: string
+          role?: string
           username?: string | null
         }
         Update: {
           created_at?: string | null
+          daily_license_count?: number
           email?: string
           id?: string
+          last_license_date?: string | null
           last_login?: string | null
           password_hash?: string | null
+          plan?: string
+          role?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: string | null
+          id: string
+          ip_address: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
           username?: string | null
         }
         Relationships: []
@@ -44,6 +86,7 @@ export type Database = {
       licenses: {
         Row: {
           created_at: string | null
+          created_by: string | null
           expires_at: string | null
           hwid: string | null
           id: string
@@ -52,6 +95,7 @@ export type Database = {
           license_key: string
           owner_email: string | null
           owner_name: string | null
+          port: number | null
           resource_name: string
           status: string | null
           updated_at: string | null
@@ -59,6 +103,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           expires_at?: string | null
           hwid?: string | null
           id?: string
@@ -67,6 +112,7 @@ export type Database = {
           license_key: string
           owner_email?: string | null
           owner_name?: string | null
+          port?: number | null
           resource_name: string
           status?: string | null
           updated_at?: string | null
@@ -74,6 +120,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           expires_at?: string | null
           hwid?: string | null
           id?: string
@@ -82,6 +129,7 @@ export type Database = {
           license_key?: string
           owner_email?: string | null
           owner_name?: string | null
+          port?: number | null
           resource_name?: string
           status?: string | null
           updated_at?: string | null
@@ -89,26 +137,59 @@ export type Database = {
         }
         Relationships: []
       }
+      login_attempts: {
+        Row: {
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          success: boolean
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          username?: string
+        }
+        Relationships: []
+      }
       validation_logs: {
         Row: {
+          error_message: string | null
           id: string
           ip_address: string | null
           license_id: string | null
+          license_key: string | null
           result: string | null
+          success: boolean | null
           validated_at: string | null
         }
         Insert: {
+          error_message?: string | null
           id?: string
           ip_address?: string | null
           license_id?: string | null
+          license_key?: string | null
           result?: string | null
+          success?: boolean | null
           validated_at?: string | null
         }
         Update: {
+          error_message?: string | null
           id?: string
           ip_address?: string | null
           license_id?: string | null
+          license_key?: string | null
           result?: string | null
+          success?: boolean | null
           validated_at?: string | null
         }
         Relationships: []
