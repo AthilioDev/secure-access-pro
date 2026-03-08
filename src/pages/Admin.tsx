@@ -844,25 +844,51 @@ const Admin = () => {
 
           {/* ══ ANNOUNCEMENTS ══ */}
           <TabsContent value="announcements">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] text-muted-foreground">Avisos e notícias do sistema.</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-bold tracking-tight">Avisos do Sistema</h2>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                  {isStaffOrAbove ? 'Publique avisos para todos os usuários.' : 'Acompanhe os avisos da equipe.'}
+                </p>
+              </div>
               {isStaffOrAbove && (
                 <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-8 bg-foreground text-background hover:bg-foreground/90 text-[11px] rounded-lg">
-                      <Plus className="w-3 h-3 mr-1" /> Novo Aviso
+                    <Button size="sm" className="h-9 bg-foreground text-background hover:bg-foreground/90 text-[11px] rounded-lg gap-1.5 px-4">
+                      <Megaphone className="w-3.5 h-3.5" /> Novo Aviso
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-card border-border max-w-md rounded-xl">
-                    <DialogHeader><DialogTitle className="text-sm">Criar Anúncio</DialogTitle></DialogHeader>
-                    <div className="space-y-2.5 mt-2">
-                      <div><label className="text-[10px] text-muted-foreground">Título *</label><Input value={annTitle} onChange={e => setAnnTitle(e.target.value)} className="mt-1 h-8 text-xs bg-background border-border rounded-lg" /></div>
-                      <div><label className="text-[10px] text-muted-foreground">Conteúdo *</label><Textarea value={annContent} onChange={e => setAnnContent(e.target.value)} className="mt-1 text-xs bg-background border-border rounded-lg min-h-[80px]" /></div>
-                      <div className="flex items-center gap-2">
-                        <Switch checked={annPinned} onCheckedChange={setAnnPinned} />
-                        <label className="text-[11px] text-muted-foreground">Fixar no topo</label>
+                  <DialogContent className="bg-card border-border/60 max-w-lg rounded-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-base font-bold flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-foreground/5 border border-border/30 flex items-center justify-center">
+                          <Megaphone className="w-4 h-4" />
+                        </div>
+                        Criar Anúncio
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 mt-3">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Título *</label>
+                        <Input value={annTitle} onChange={e => setAnnTitle(e.target.value)} placeholder="Ex: Manutenção programada..." className="mt-1.5 h-9 text-xs bg-background/80 border-border/40 rounded-lg" />
                       </div>
-                      <Button className="w-full h-8 bg-foreground text-background hover:bg-foreground/90 text-[11px] rounded-lg" onClick={createAnnouncement}>Publicar</Button>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Conteúdo *</label>
+                        <Textarea value={annContent} onChange={e => setAnnContent(e.target.value)} placeholder="Descreva o aviso em detalhes..." className="mt-1.5 text-xs bg-background/80 border-border/40 rounded-lg min-h-[100px] resize-none" />
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
+                        <div className="flex items-center gap-2">
+                          <Pin className="w-3.5 h-3.5 text-muted-foreground" />
+                          <div>
+                            <span className="text-[11px] font-medium">Fixar no topo</span>
+                            <p className="text-[9px] text-muted-foreground/60">Exibido como banner em todas as páginas</p>
+                          </div>
+                        </div>
+                        <Switch checked={annPinned} onCheckedChange={setAnnPinned} />
+                      </div>
+                      <Button className="w-full h-9 bg-foreground text-background hover:bg-foreground/90 text-[11px] rounded-lg font-medium" onClick={createAnnouncement}>
+                        <Megaphone className="w-3.5 h-3.5 mr-1.5" /> Publicar Aviso
+                      </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -870,28 +896,47 @@ const Admin = () => {
             </div>
 
             {announcements.length === 0 ? (
-              <div className="glass-card p-10 text-center">
-                <Megaphone className="w-8 h-8 text-muted-foreground/20 mx-auto mb-3" />
-                <p className="text-[11px] text-muted-foreground">Nenhum aviso publicado.</p>
+              <div className="glass-card p-16 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-muted/30 border border-border/20 flex items-center justify-center mx-auto mb-4">
+                  <Megaphone className="w-6 h-6 text-muted-foreground/30" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground/60">Nenhum aviso publicado</p>
+                <p className="text-[11px] text-muted-foreground/40 mt-1">
+                  {isStaffOrAbove ? 'Clique em "Novo Aviso" para criar o primeiro.' : 'Quando houver novidades, elas aparecerão aqui.'}
+                </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {announcements.map(ann => (
-                  <div key={ann.id} className="glass-card p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          {ann.is_pinned && <Pin className="w-3 h-3 text-muted-foreground" />}
-                          <span className="text-sm font-semibold">{ann.title}</span>
+              <div className="space-y-3">
+                {announcements.map((ann, idx) => (
+                  <div key={ann.id} className={`relative overflow-hidden rounded-xl border transition-all hover:border-border/60 ${ann.is_pinned ? 'border-foreground/10 bg-gradient-to-br from-card/90 via-card/70 to-card/90' : 'border-border/30 bg-card/50'}`}>
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${ann.is_pinned ? 'bg-foreground/[0.06] border border-foreground/10' : 'bg-muted/40 border border-border/20'}`}>
+                            {ann.is_pinned ? <Pin className="w-4 h-4 text-foreground/50" /> : <Megaphone className="w-4 h-4 text-muted-foreground/40" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                              <span className="text-sm font-bold tracking-tight">{ann.title}</span>
+                              {ann.is_pinned && (
+                                <span className="text-[8px] uppercase tracking-widest text-foreground/50 bg-foreground/[0.06] border border-foreground/10 px-1.5 py-0.5 rounded-md font-semibold">Fixado</span>
+                              )}
+                            </div>
+                            <p className="text-[12px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap">{ann.content}</p>
+                            <div className="flex items-center gap-2 mt-3">
+                              <div className="w-5 h-5 rounded-full bg-foreground/5 border border-border/30 flex items-center justify-center">
+                                <span className="text-[8px] font-bold text-muted-foreground">{(ann.author_name || 'S')[0].toUpperCase()}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground/50">{ann.author_name} · {fmtShort(ann.created_at)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-muted-foreground">{ann.content}</p>
-                        <p className="text-[10px] text-muted-foreground/50 mt-2">por {ann.author_name} · {fmtShort(ann.created_at)}</p>
+                        {isStaffOrAbove && (
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground/30 hover:text-destructive rounded-lg shrink-0" onClick={() => deleteAnnouncement(ann.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
-                      {isStaffOrAbove && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => deleteAnnouncement(ann.id)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))}
