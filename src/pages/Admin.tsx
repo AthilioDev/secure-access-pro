@@ -599,7 +599,7 @@ const Admin = () => {
           )}
 
           {/* ── LOGS (Admin) ── */}
-          {isAdmin && (
+          {isAdmin && showAdminControls && (
             <TabsContent value="logs">
               {/* Filters */}
               <div className="flex flex-col md:flex-row gap-2 mb-4">
