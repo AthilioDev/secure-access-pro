@@ -120,9 +120,11 @@ const Admin = () => {
     }
 
     try {
+      const licenseKey = crypto.randomUUID();
       const { error } = await supabase
         .from('licenses')
         .insert({
+          license_key: licenseKey,
           owner_name: newLicense.owner_name,
           owner_email: newLicense.owner_email || null,
           resource_name: newLicense.resource_name,

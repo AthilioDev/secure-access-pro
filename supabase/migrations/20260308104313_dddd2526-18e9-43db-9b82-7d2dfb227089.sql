@@ -1,0 +1,2 @@
+ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.validation_logs ENABLE ROW LEVEL SECURITY;

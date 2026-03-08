@@ -1,0 +1,4 @@
+ALTER TABLE public.admin_users 
+ADD COLUMN username TEXT UNIQUE,
+ADD COLUMN password_hash TEXT,
+ADD COLUMN last_login TIMESTAMP WITH TIME ZONE;
