@@ -536,7 +536,7 @@ const Admin = () => {
           )}
 
           {/* ── USERS (Admin) ── */}
-          {isAdmin && (
+          {isAdmin && showAdminControls && (
             <TabsContent value="users">
               <div className="rounded-md border border-border overflow-hidden">
                 <table className="w-full text-xs">
