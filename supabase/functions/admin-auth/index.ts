@@ -374,15 +374,25 @@ Deno.serve(async (req) => {
       if (hooks && hooks.length > 0) {
         for (const hook of hooks) {
           try {
+            const payload = {
+              event: evtType,
+              timestamp: new Date().toISOString(),
+              user_id: userId,
+              data: license_data || {},
+            };
+
+            const isDiscordWebhook = hook.webhook_url.includes('discord.com/api/webhooks');
+            const requestBody = isDiscordWebhook
+              ? JSON.stringify({
+                  content: `Secure Access Pro · ${evtType}\n\
+\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 1700)}\n\`\`\``,
+                })
+              : JSON.stringify(payload);
+
             const response = await fetch(hook.webhook_url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                event: evtType,
-                timestamp: new Date().toISOString(),
-                user_id: userId,
-                data: license_data || {},
-              }),
+              body: requestBody,
             });
 
             if (response.ok) {
