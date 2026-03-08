@@ -19,11 +19,13 @@ function getSupabase() {
   return createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 }
 
-// Simple XOR-based obfuscation for bot tokens (not true encryption, but prevents plain-text storage)
 const TOKEN_KEY = 'athilio-auth-bot-key-2024';
 function obfuscateToken(token: string): string {
   return btoa(token.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ TOKEN_KEY.charCodeAt(i % TOKEN_KEY.length))).join(''));
 }
+
+// Brute force protection
+const loginAttemptCache = new Map<string, { count: number; blockedUntil: number }>();
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -32,24 +34,45 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
     const supabase = getSupabase();
-    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || 'unknown';
 
     // ── LOGIN ──
     if (!action || action === 'login') {
       const { username, password } = body;
       if (!username || !password) return err('Username and password are required');
 
+      // Check brute force
+      const key = `${username}:${clientIP}`;
+      const attempt = loginAttemptCache.get(key);
+      if (attempt && attempt.blockedUntil > Date.now()) {
+        const mins = Math.ceil((attempt.blockedUntil - Date.now()) / 60000);
+        return err(`Too many attempts. Try again in ${mins} minutes.`, 429);
+      }
+
       const { data: adminUser, error } = await supabase
         .from('admin_users').select('*').eq('username', username).maybeSingle();
 
       if (error) return err('Database error', 500);
 
+      const success = !!adminUser && adminUser.password_hash === password;
+
       await supabase.from('login_attempts').insert({
-        username, ip_address: clientIP,
-        success: !!adminUser && adminUser.password_hash === password,
+        username, ip_address: clientIP, success,
       });
 
-      if (!adminUser || adminUser.password_hash !== password) return err('Invalid credentials', 401);
+      if (!success) {
+        const current = loginAttemptCache.get(key) || { count: 0, blockedUntil: 0 };
+        current.count++;
+        if (current.count >= 5) {
+          current.blockedUntil = Date.now() + 15 * 60 * 1000;
+          current.count = 0;
+        }
+        loginAttemptCache.set(key, current);
+        return err('Invalid credentials', 401);
+      }
+
+      // Reset on success
+      loginAttemptCache.delete(key);
 
       await supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', adminUser.id);
       await supabase.from('audit_logs').insert({
@@ -60,6 +83,38 @@ Deno.serve(async (req) => {
       return ok({
         success: true,
         user: { id: adminUser.id, username: adminUser.username, role: adminUser.role, plan: adminUser.plan },
+        token: crypto.randomUUID(),
+      });
+    }
+
+    // ── REGISTER ──
+    if (action === 'register') {
+      const { username, password, email } = body;
+      if (!username || !password || !email) return err('All fields are required');
+      if (username.length < 3) return err('Username must be at least 3 characters');
+      if (password.length < 6) return err('Password must be at least 6 characters');
+
+      const { data: existing } = await supabase
+        .from('admin_users').select('id').or(`username.eq.${username},email.eq.${email}`).maybeSingle();
+
+      if (existing) return err('Username or email already exists');
+
+      const { data: newUser, error: insertErr } = await supabase
+        .from('admin_users').insert({
+          username, email, password_hash: password,
+          role: 'staff', plan: 'standard',
+        }).select('id, username, role, plan').single();
+
+      if (insertErr) return err('Failed to create account', 500);
+
+      await supabase.from('audit_logs').insert({
+        user_id: newUser.id, username: newUser.username,
+        action: 'REGISTER', details: `New account created`, ip_address: clientIP,
+      });
+
+      return ok({
+        success: true,
+        user: { id: newUser.id, username: newUser.username, role: newUser.role, plan: newUser.plan },
         token: crypto.randomUUID(),
       });
     }
@@ -75,12 +130,12 @@ Deno.serve(async (req) => {
 
       let validationQuery: Promise<{ data: any[] | null }>;
       if (isAdminView) {
-        validationQuery = supabase.from('validation_logs').select('*').order('validated_at', { ascending: false }).limit(200);
+        validationQuery = supabase.from('validation_logs').select('*').order('validated_at', { ascending: false }).limit(500);
       } else if (user_id) {
         const { data: ul } = await supabase.from('licenses').select('license_key').eq('created_by', user_id).limit(1000);
-        const keys = (ul || []).map(l => l.license_key).filter(Boolean);
+        const keys = (ul || []).map((l: any) => l.license_key).filter(Boolean);
         validationQuery = keys.length > 0
-          ? supabase.from('validation_logs').select('*').in('license_key', keys).order('validated_at', { ascending: false }).limit(200)
+          ? supabase.from('validation_logs').select('*').in('license_key', keys).order('validated_at', { ascending: false }).limit(500)
           : Promise.resolve({ data: [] });
       } else {
         validationQuery = Promise.resolve({ data: [] });
@@ -89,14 +144,15 @@ Deno.serve(async (req) => {
       const [
         { data: licenses }, { data: validationLogs }, { data: auditLogs },
         { data: loginAttempts }, { data: adminUsers }, { data: webhooks }, { data: bots },
+        { data: announcements }, { data: tickets },
       ] = await Promise.all([
         licensesQuery,
         validationQuery,
         isAdminView
-          ? supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200)
+          ? supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500)
           : supabase.from('audit_logs').select('*').eq('user_id', user_id).order('created_at', { ascending: false }).limit(100),
         isAdminView
-          ? supabase.from('login_attempts').select('*').order('created_at', { ascending: false }).limit(100)
+          ? supabase.from('login_attempts').select('*').order('created_at', { ascending: false }).limit(200)
           : Promise.resolve({ data: [] }),
         isAdminView
           ? supabase.from('admin_users').select('id, username, email, role, plan, last_login, created_at, daily_license_count, last_license_date')
@@ -104,11 +160,16 @@ Deno.serve(async (req) => {
         user_id
           ? supabase.from('user_webhooks').select('*').eq('user_id', user_id).order('created_at', { ascending: false })
           : Promise.resolve({ data: [] }),
-        // Bots: admins see all, users see own
         isAdminView
           ? supabase.from('discord_bots').select('id, user_id, bot_name, log_channel_id, ticket_category_id, status, is_running, tickets_open, created_at').order('created_at', { ascending: false })
           : user_id
             ? supabase.from('discord_bots').select('id, user_id, bot_name, log_channel_id, ticket_category_id, status, is_running, tickets_open, created_at').eq('user_id', user_id).order('created_at', { ascending: false })
+            : Promise.resolve({ data: [] }),
+        supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50),
+        isAdminView
+          ? supabase.from('tickets').select('*').order('created_at', { ascending: false }).limit(200)
+          : user_id
+            ? supabase.from('tickets').select('*').eq('user_id', user_id).order('created_at', { ascending: false }).limit(50)
             : Promise.resolve({ data: [] }),
       ]);
 
@@ -117,7 +178,8 @@ Deno.serve(async (req) => {
         licenses: licenses || [], validationLogs: validationLogs || [],
         auditLogs: auditLogs || [], loginAttempts: loginAttempts || [],
         adminUsers: adminUsers || [], webhooks: webhooks || [],
-        bots: bots || [],
+        bots: bots || [], announcements: announcements || [],
+        tickets: tickets || [],
       });
     }
 
@@ -200,18 +262,24 @@ Deno.serve(async (req) => {
 
       if (hooks && hooks.length > 0) {
         for (const hook of hooks) {
-          try {
-            const payload = { event: evtType, timestamp: new Date().toISOString(), user_id: userId, data: license_data || {} };
-            const isDiscord = hook.webhook_url.includes('discord.com/api/webhooks');
-            const requestBody = isDiscord
-              ? JSON.stringify({ content: `Athilio Auth · ${evtType}\n\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 1700)}\n\`\`\`` })
-              : JSON.stringify(payload);
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const payload = { event: evtType, timestamp: new Date().toISOString(), user_id: userId, data: license_data || {} };
+              const isDiscord = hook.webhook_url.includes('discord.com/api/webhooks');
+              const requestBody = isDiscord
+                ? JSON.stringify({ content: `**Athilio Auth** · \`${evtType}\`\n\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 1700)}\n\`\`\`` })
+                : JSON.stringify(payload);
 
-            const resp = await fetch(hook.webhook_url, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: requestBody,
-            });
-            if (resp.ok) fired++; else failed.push({ webhook_id: hook.id, status: resp.status });
-          } catch (e) { failed.push({ webhook_id: hook.id, error: String(e) }); }
+              const resp = await fetch(hook.webhook_url, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: requestBody,
+              });
+              if (resp.ok) { fired++; break; }
+              if (attempt === 2) failed.push({ webhook_id: hook.id, status: resp.status });
+            } catch (e) {
+              if (attempt === 2) failed.push({ webhook_id: hook.id, error: String(e) });
+            }
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          }
         }
       }
       return ok({ success: true, fired, failed });
@@ -239,7 +307,6 @@ Deno.serve(async (req) => {
       const { bot_id, bot_action: bact, user_id: buid, user_role: brole } = body;
       if (!bot_id || !bact) return err('Missing fields');
 
-      // Verify ownership or staff+ role
       const { data: bot } = await supabase.from('discord_bots').select('*').eq('id', bot_id).maybeSingle();
       if (!bot) return err('Bot not found', 404);
 
@@ -249,13 +316,13 @@ Deno.serve(async (req) => {
 
       if (bact === 'delete') {
         await supabase.from('discord_bots').delete().eq('id', bot_id);
+        await supabase.from('discord_bot_logs').insert({ bot_id, action: 'delete', details: `Deleted by ${buid}` });
         await supabase.from('audit_logs').insert({
           user_id: buid, action: 'DELETE_BOT', details: `Bot: ${bot.bot_name}`, ip_address: clientIP,
         });
         return ok({ success: true });
       }
 
-      // start / stop / restart → update status (actual bot process managed externally)
       const statusMap: Record<string, { status: string; is_running: boolean }> = {
         start: { status: 'online', is_running: true },
         stop: { status: 'offline', is_running: false },
@@ -265,14 +332,89 @@ Deno.serve(async (req) => {
       if (!newStatus) return err('Invalid action');
 
       const updates: Record<string, unknown> = { ...newStatus };
-      if (bact === 'start') updates.last_started_at = new Date().toISOString();
+      if (bact === 'start' || bact === 'restart') updates.last_started_at = new Date().toISOString();
       if (bact === 'stop') updates.last_stopped_at = new Date().toISOString();
-      if (bact === 'restart') updates.last_started_at = new Date().toISOString();
 
       await supabase.from('discord_bots').update(updates).eq('id', bot_id);
+      await supabase.from('discord_bot_logs').insert({ bot_id, action: bact, details: `By user ${buid}` });
       await supabase.from('audit_logs').insert({
         user_id: buid, action: `BOT_${bact.toUpperCase()}`, details: `Bot: ${bot.bot_name}`, ip_address: clientIP,
       });
+      return ok({ success: true });
+    }
+
+    // ── ANNOUNCEMENTS ──
+    if (action === 'create_announcement') {
+      const { user_id: auid, user_role: arole, title, content, is_pinned, author_name } = body;
+      if (!['staff', 'admin', 'master', 'master_plus'].includes(arole)) return err('Unauthorized', 403);
+      if (!title || !content) return err('Title and content required');
+
+      const { error: e } = await supabase.from('announcements').insert({
+        title, content, author_id: auid, author_name: author_name || 'Staff', is_pinned: is_pinned || false,
+      });
+      if (e) return err('Failed to create announcement', 500);
+      return ok({ success: true });
+    }
+
+    if (action === 'delete_announcement') {
+      const { announcement_id, user_role: arole } = body;
+      if (!['staff', 'admin', 'master', 'master_plus'].includes(arole)) return err('Unauthorized', 403);
+      await supabase.from('announcements').delete().eq('id', announcement_id);
+      return ok({ success: true });
+    }
+
+    // ── TICKETS ──
+    if (action === 'create_ticket') {
+      const { user_id: tuid, user_name, subject, priority } = body;
+      if (!tuid || !subject) return err('Missing fields');
+
+      const { data: ticket, error: e } = await supabase.from('tickets').insert({
+        user_id: tuid, user_name: user_name || 'Usuário', subject, priority: priority || 'normal',
+      }).select('*').single();
+      if (e) return err('Failed to create ticket', 500);
+      return ok({ success: true, ticket });
+    }
+
+    if (action === 'update_ticket') {
+      const { ticket_id, status, assigned_to, assigned_name, user_role: trole } = body;
+      if (!ticket_id) return err('Missing ticket_id');
+
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (status) updates.status = status;
+      if (status === 'closed') updates.closed_at = new Date().toISOString();
+      if (assigned_to) { updates.assigned_to = assigned_to; updates.assigned_name = assigned_name; }
+
+      await supabase.from('tickets').update(updates).eq('id', ticket_id);
+      return ok({ success: true });
+    }
+
+    if (action === 'get_ticket_messages') {
+      const { ticket_id } = body;
+      if (!ticket_id) return err('Missing ticket_id');
+
+      const { data: messages } = await supabase.from('ticket_messages').select('*')
+        .eq('ticket_id', ticket_id).order('created_at', { ascending: true });
+      return ok({ success: true, messages: messages || [] });
+    }
+
+    if (action === 'send_ticket_message') {
+      const { ticket_id, sender_id, sender_name, sender_role, message } = body;
+      if (!ticket_id || !sender_id || !message) return err('Missing fields');
+
+      const { error: e } = await supabase.from('ticket_messages').insert({
+        ticket_id, sender_id, sender_name: sender_name || 'Usuário',
+        sender_role: sender_role || 'client', message,
+      });
+      if (e) return err('Failed to send message', 500);
+
+      // Update ticket status if staff replies
+      if (['staff', 'admin', 'master', 'master_plus'].includes(sender_role)) {
+        await supabase.from('tickets').update({
+          status: 'in_progress', updated_at: new Date().toISOString(),
+          assigned_to: sender_id, assigned_name: sender_name,
+        }).eq('id', ticket_id);
+      }
+
       return ok({ success: true });
     }
 
