@@ -477,7 +477,7 @@ const Admin = () => {
           </TabsContent>
 
           {/* ── OVERVIEW (Admin) ── */}
-          {isAdmin && (
+          {isAdmin && showAdminControls && (
             <TabsContent value="overview">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 {[
