@@ -361,11 +361,12 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Fetch webhooks matching the specific event OR the "all" catch-all
       const { data: hooks } = await supabase
         .from('user_webhooks')
         .select('*')
         .eq('user_id', userId)
-        .eq('event_type', evtType)
+        .in('event_type', [evtType, 'all'])
         .eq('enabled', true);
 
       let fired = 0;

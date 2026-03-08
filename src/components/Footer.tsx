@@ -6,10 +6,10 @@ const Footer = () => (
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Secure Access Pro</span>
+          <span className="text-sm font-semibold">Athilio Auth</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Secure Access Pro. Todos os direitos reservados.
+          © {new Date().getFullYear()} Athilio Auth. Todos os direitos reservados.
         </p>
       </div>
     </div>

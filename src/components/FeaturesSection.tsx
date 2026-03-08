@@ -1,15 +1,15 @@
 import { motion } from "framer-motion";
-import { Shield, Key, Users, Activity, Lock, Zap, Globe, Webhook } from "lucide-react";
+import { Shield, Key, Users, Activity, Zap, Globe, Webhook, Settings } from "lucide-react";
 
 const features = [
-  { icon: Shield, title: "Proteção Multicamada", desc: "Validação de licença + IP + porta do servidor para máxima segurança." },
-  { icon: Key, title: "Gestão de Licenças", desc: "Crie, suspenda, revogue e gerencie licenças em tempo real pelo painel." },
-  { icon: Users, title: "Controle de Acesso", desc: "Níveis de permissão: Staff, Admin, Master e Master++ com limites configuráveis." },
-  { icon: Activity, title: "Logs Detalhados", desc: "Registros completos de validações, acessos e alterações do sistema." },
-  { icon: Lock, title: "HWID & IP Lock", desc: "Vincule licenças ao hardware e IP do cliente para evitar compartilhamento." },
-  { icon: Zap, title: "Alta Performance", desc: "Validações em menos de 50ms com infraestrutura serverless escalável." },
-  { icon: Globe, title: "Validação Remota", desc: "Seu script valida automaticamente ao iniciar, sem configuração extra." },
-  { icon: Webhook, title: "Webhooks", desc: "Receba notificações em tempo real de cada evento no seu Discord ou sistema." },
+  { icon: Shield, title: "Proteção Completa", desc: "Licenças vinculadas a IP e porta do servidor para máxima segurança." },
+  { icon: Key, title: "Gestão de Licenças", desc: "Crie, edite, suspenda e revogue licenças em tempo real pelo painel." },
+  { icon: Users, title: "Controle de Acesso", desc: "Níveis de permissão configuráveis com limites por plano." },
+  { icon: Activity, title: "Logs Completos", desc: "Registros de validações, acessos e todas as alterações do sistema." },
+  { icon: Settings, title: "Edição Flexível", desc: "Altere IP, porta e data de expiração das licenças a qualquer momento." },
+  { icon: Zap, title: "Alta Performance", desc: "Validações rápidas com infraestrutura serverless escalável." },
+  { icon: Globe, title: "Automático", desc: "Validação automática ao iniciar, sem configuração extra no servidor." },
+  { icon: Webhook, title: "Webhooks", desc: "Notificações em tempo real de todos os eventos no seu Discord ou sistema." },
 ];
 
 const FeaturesSection = () => (
@@ -22,9 +22,7 @@ const FeaturesSection = () => (
         className="text-center mb-16"
       >
         <p className="text-xs text-muted-foreground uppercase tracking-[0.2em] mb-3">Recursos</p>
-        <h2 className="text-3xl md:text-5xl font-bold">
-          Tudo para proteger seus scripts
-        </h2>
+        <h2 className="text-3xl md:text-5xl font-bold">Tudo para gerenciar suas licenças</h2>
       </motion.div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

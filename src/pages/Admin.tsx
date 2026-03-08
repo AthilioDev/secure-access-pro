@@ -57,6 +57,7 @@ interface WebhookConfig {
 }
 
 const WEBHOOK_EVENTS = [
+  { value: 'all', label: 'Todos os Eventos' },
   { value: 'license_created', label: 'Criada' },
   { value: 'license_edited', label: 'Editada' },
   { value: 'license_suspended', label: 'Suspensa' },
@@ -106,7 +107,12 @@ const Admin = () => {
   const [logTypeFilter, setLogTypeFilter] = useState("all");
   const [newWebhookUrl, setNewWebhookUrl] = useState("");
   const [newWebhookEvent, setNewWebhookEvent] = useState("");
-  const [manageLicense, setManageLicense] = useState<License | null>(null);
+
+  /* ─── Edit license state ─── */
+  const [editingLicense, setEditingLicense] = useState<string | null>(null);
+  const [editLicIp, setEditLicIp] = useState("");
+  const [editLicPort, setEditLicPort] = useState("");
+  const [editLicExpiry, setEditLicExpiry] = useState("");
 
   const [newLic, setNewLic] = useState({
     owner_name: "", owner_email: "", resource_name: "",
@@ -139,9 +145,7 @@ const Admin = () => {
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated) fetchData();
-  }, [isAuthenticated, showAdminControls]);
+  useEffect(() => { if (isAuthenticated) fetchData(); }, [isAuthenticated, showAdminControls]);
 
   useEffect(() => {
     if (!showAdminControls && ['overview', 'users', 'logs'].includes(activeTab)) {
@@ -186,30 +190,41 @@ const Admin = () => {
       const lic = licenses.find(l => l.id === id);
       const payload: { status: string; created_by?: string } = { status };
       if (!lic?.created_by && user?.id) payload.created_by = user.id;
-
       const { error } = await supabase.from('licenses').update(payload).eq('id', id);
       if (error) throw error;
-
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'UPDATE_LICENSE_STATUS', details: `${id} → ${status}` } });
       const evtMap: Record<string, string> = { suspended: 'license_suspended', revoked: 'license_revoked', active: 'license_edited' };
       if (evtMap[status]) {
-        await supabase.functions.invoke('admin-auth', {
-          body: {
-            action: 'fire_webhooks',
-            event_type: evtMap[status],
-            created_by_user_id: lic?.created_by || user?.id,
-            initiator_user_id: user?.id,
-            license_data: { license_key: lic?.license_key, owner: lic?.owner_name, status }
-          }
-        });
+        await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: evtMap[status], created_by_user_id: lic?.created_by || user?.id, initiator_user_id: user?.id, license_data: { license_key: lic?.license_key, owner: lic?.owner_name, status } } });
       }
-
       toast({ title: "Status atualizado" });
-      setManageLicense(null);
       fetchData();
-    } catch {
-      toast({ title: "Erro", variant: "destructive" });
-    }
+    } catch { toast({ title: "Erro", variant: "destructive" }); }
+  };
+
+  /* ─── Edit license (IP, port, expiry) ─── */
+  const startEditLicense = (l: License) => {
+    setEditingLicense(l.id);
+    setEditLicIp(l.ip_address || "");
+    setEditLicPort(l.port?.toString() || "");
+    setEditLicExpiry(l.expires_at ? new Date(l.expires_at).toISOString().slice(0, 16) : "");
+  };
+
+  const saveEditLicense = async (id: string) => {
+    try {
+      const lic = licenses.find(l => l.id === id);
+      const { error } = await supabase.from('licenses').update({
+        ip_address: editLicIp || null,
+        port: editLicPort ? parseInt(editLicPort) : null,
+        expires_at: editLicExpiry || null,
+      }).eq('id', id);
+      if (error) throw error;
+      await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'EDIT_LICENSE', details: `${id} IP=${editLicIp || '—'} Port=${editLicPort || '—'} Exp=${editLicExpiry || '—'}` } });
+      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_edited', created_by_user_id: lic?.created_by || user?.id, initiator_user_id: user?.id, license_data: { license_key: lic?.license_key, owner: lic?.owner_name, ip: editLicIp, port: editLicPort, expires_at: editLicExpiry } } });
+      toast({ title: "Licença atualizada" });
+      setEditingLicense(null);
+      fetchData();
+    } catch { toast({ title: "Erro", variant: "destructive" }); }
   };
 
   const delLicense = async (id: string) => {
@@ -218,21 +233,10 @@ const Admin = () => {
       const lic = licenses.find(l => l.id === id);
       await supabase.from('licenses').delete().eq('id', id);
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'DELETE_LICENSE', details: `${id}` } });
-      await supabase.functions.invoke('admin-auth', {
-        body: {
-          action: 'fire_webhooks',
-          event_type: 'license_deleted',
-          created_by_user_id: lic?.created_by || user?.id,
-          initiator_user_id: user?.id,
-          license_data: { license_key: lic?.license_key, owner: lic?.owner_name }
-        }
-      });
+      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_deleted', created_by_user_id: lic?.created_by || user?.id, initiator_user_id: user?.id, license_data: { license_key: lic?.license_key, owner: lic?.owner_name } } });
       toast({ title: "Licença excluída" });
-      setManageLicense(null);
       fetchData();
-    } catch {
-      toast({ title: "Erro", variant: "destructive" });
-    }
+    } catch { toast({ title: "Erro", variant: "destructive" }); }
   };
 
   const updateRole = async (tid: string) => {
@@ -303,14 +307,14 @@ const Admin = () => {
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Shield className="w-5 h-5 text-foreground" />
-            <span className="text-sm font-semibold tracking-tight">Secure Access Pro</span>
+            <span className="text-sm font-semibold tracking-tight">Athilio Auth</span>
             <span className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">
               {getRoleLabel(user?.role || 'staff')} · {getPlanLabel(user?.plan || 'standard')}
             </span>
           </div>
           <div className="flex items-center gap-2">
             {planLimit !== -1 && (
-              <span className="text-[10px] text-muted-foreground">{usedToday}/{planLimit} licenças hoje</span>
+              <span className="text-[10px] text-muted-foreground">{usedToday}/{planLimit} hoje</span>
             )}
             {isAdmin && (
               <Button
@@ -320,7 +324,7 @@ const Admin = () => {
                 className="text-xs h-8 rounded-full"
               >
                 <Settings className="w-3.5 h-3.5 mr-1" />
-                {showAdminControls ? 'Fechar Gerenciar' : 'Gerenciar'}
+                {showAdminControls ? 'Fechar Admin' : 'Gerenciar'}
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => navigate("/downloads")} className="text-xs text-muted-foreground h-8 rounded-full">
@@ -369,10 +373,10 @@ const Admin = () => {
             <div className="flex flex-col md:flex-row gap-2 mb-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-8 text-xs bg-card border-border" />
+                <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-8 text-xs bg-card border-border rounded-xl" />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32 h-8 text-xs bg-card border-border"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-32 h-8 text-xs bg-card border-border rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="active">Ativas</SelectItem>
@@ -381,35 +385,35 @@ const Admin = () => {
                   <SelectItem value="expired">Expiradas</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={fetchData} className="h-8 border-border"><RefreshCw className="w-3 h-3" /></Button>
+              <Button variant="outline" size="sm" onClick={fetchData} className="h-8 border-border rounded-xl"><RefreshCw className="w-3 h-3" /></Button>
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" disabled={!canCreate} className="h-8 bg-foreground text-background hover:bg-foreground/90 text-xs">
+                  <Button size="sm" disabled={!canCreate} className="h-8 bg-foreground text-background hover:bg-foreground/90 text-xs rounded-xl">
                     <Plus className="w-3 h-3 mr-1" /> Nova Licença
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-card border-border max-w-md">
+                <DialogContent className="bg-card border-border max-w-md rounded-2xl">
                   <DialogHeader><DialogTitle className="text-sm">Criar Licença</DialogTitle></DialogHeader>
                   <div className="space-y-3 mt-2">
                     <div className="grid grid-cols-2 gap-2">
-                      <div><label className="text-[10px] text-muted-foreground">Proprietário *</label><Input value={newLic.owner_name} onChange={e => setNewLic({ ...newLic, owner_name: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border" /></div>
-                      <div><label className="text-[10px] text-muted-foreground">Email</label><Input value={newLic.owner_email} onChange={e => setNewLic({ ...newLic, owner_email: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">Proprietário *</label><Input value={newLic.owner_name} onChange={e => setNewLic({ ...newLic, owner_name: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border rounded-xl" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">Email</label><Input value={newLic.owner_email} onChange={e => setNewLic({ ...newLic, owner_email: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border rounded-xl" /></div>
                     </div>
-                    <div><label className="text-[10px] text-muted-foreground">Script (resource) *</label><Input value={newLic.resource_name} onChange={e => setNewLic({ ...newLic, resource_name: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border" /></div>
+                    <div><label className="text-[10px] text-muted-foreground">Script (resource) *</label><Input value={newLic.resource_name} onChange={e => setNewLic({ ...newLic, resource_name: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border rounded-xl" /></div>
                     <div className="grid grid-cols-2 gap-2">
-                      <div><label className="text-[10px] text-muted-foreground">IP</label><Input value={newLic.ip_address} onChange={e => setNewLic({ ...newLic, ip_address: e.target.value })} placeholder="1.2.3.4" className="mt-1 h-8 text-xs bg-background border-border" /></div>
-                      <div><label className="text-[10px] text-muted-foreground">Porta</label><Input type="number" value={newLic.port} onChange={e => setNewLic({ ...newLic, port: e.target.value })} placeholder="30120" className="mt-1 h-8 text-xs bg-background border-border" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">IP</label><Input value={newLic.ip_address} onChange={e => setNewLic({ ...newLic, ip_address: e.target.value })} placeholder="1.2.3.4" className="mt-1 h-8 text-xs bg-background border-border rounded-xl" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">Porta</label><Input type="number" value={newLic.port} onChange={e => setNewLic({ ...newLic, port: e.target.value })} placeholder="30120" className="mt-1 h-8 text-xs bg-background border-border rounded-xl" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><label className="text-[10px] text-muted-foreground">Status</label>
                         <Select value={newLic.status} onValueChange={v => setNewLic({ ...newLic, status: v })}>
-                          <SelectTrigger className="mt-1 h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="mt-1 h-8 text-xs bg-background border-border rounded-xl"><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="active">Ativa</SelectItem><SelectItem value="suspended">Suspensa</SelectItem></SelectContent>
                         </Select>
                       </div>
-                      <div><label className="text-[10px] text-muted-foreground">Expiração</label><Input type="datetime-local" value={newLic.expires_at} onChange={e => setNewLic({ ...newLic, expires_at: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border" /></div>
+                      <div><label className="text-[10px] text-muted-foreground">Expiração</label><Input type="datetime-local" value={newLic.expires_at} onChange={e => setNewLic({ ...newLic, expires_at: e.target.value })} className="mt-1 h-8 text-xs bg-background border-border rounded-xl" /></div>
                     </div>
-                    <Button className="w-full h-8 bg-foreground text-background hover:bg-foreground/90 text-xs" onClick={createLicense} disabled={!canCreate}>Gerar Licença</Button>
+                    <Button className="w-full h-8 bg-foreground text-background hover:bg-foreground/90 text-xs rounded-xl" onClick={createLicense} disabled={!canCreate}>Gerar Licença</Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -421,14 +425,14 @@ const Admin = () => {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-card border-b border-border">
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Chave</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Proprietário</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Script</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">IP:Porta</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Status</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Criada</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Expira</th>
-                      <th className="text-right px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Ações</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Chave</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Proprietário</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Script</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">IP:Porta</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Status</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Criada</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Expira</th>
+                      <th className="text-right px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -437,36 +441,59 @@ const Admin = () => {
                     ) : filtered.length === 0 ? (
                       <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">Nenhuma licença</td></tr>
                     ) : filtered.map(l => (
-                      <tr key={l.id} className="border-b border-border/50 hover:bg-card/50 transition-colors">
-                        <td className="px-3 py-2">
+                      <tr key={l.id} className="border-b border-border/50">
+                        <td className="px-3 py-2.5">
                           <button onClick={() => copy(l.license_key)} className="flex items-center gap-1 group">
                             <code className="font-mono text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">{l.license_key.slice(0, 8)}…</code>
                             {copiedKey === l.license_key ? <Check className="w-3 h-3 text-foreground" /> : <Copy className="w-3 h-3 text-muted-foreground/50 group-hover:text-foreground transition-colors" />}
                           </button>
                         </td>
-                        <td className="px-3 py-2"><span className="font-medium">{l.owner_name}</span></td>
-                        <td className="px-3 py-2 text-muted-foreground">{l.resource_name}</td>
-                        <td className="px-3 py-2 font-mono text-muted-foreground">{l.ip_address || '—'}{l.port ? `:${l.port}` : ''}</td>
-                        <td className="px-3 py-2"><span className="flex items-center gap-1.5">{statusDot(l.status)}{statusLabel(l.status)}</span></td>
-                        <td className="px-3 py-2 text-muted-foreground">{fmt(l.created_at)}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{fmt(l.expires_at)}</td>
-                        <td className="px-3 py-2 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground">
-                                <MoreHorizontal className="w-3.5 h-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-card border-border text-xs">
-                              <DropdownMenuItem onClick={() => copy(l.license_key)} className="text-xs"><Copy className="w-3 h-3 mr-2" /> Copiar Chave</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {l.status !== 'active' && <DropdownMenuItem onClick={() => setStatus(l.id, 'active')} className="text-xs"><CheckCircle className="w-3 h-3 mr-2" /> Ativar</DropdownMenuItem>}
-                              {l.status !== 'suspended' && <DropdownMenuItem onClick={() => setStatus(l.id, 'suspended')} className="text-xs"><AlertCircle className="w-3 h-3 mr-2" /> Suspender</DropdownMenuItem>}
-                              {l.status !== 'revoked' && <DropdownMenuItem onClick={() => setStatus(l.id, 'revoked')} className="text-xs"><XCircle className="w-3 h-3 mr-2" /> Revogar</DropdownMenuItem>}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => delLicense(l.id)} className="text-xs text-destructive"><Trash2 className="w-3 h-3 mr-2" /> Excluir</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <td className="px-3 py-2.5"><span className="font-medium">{l.owner_name}</span></td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{l.resource_name}</td>
+                        <td className="px-3 py-2.5">
+                          {editingLicense === l.id ? (
+                            <div className="flex gap-1">
+                              <Input value={editLicIp} onChange={e => setEditLicIp(e.target.value)} placeholder="IP" className="h-6 w-24 text-[10px] bg-background border-border rounded-lg" />
+                              <Input value={editLicPort} onChange={e => setEditLicPort(e.target.value)} placeholder="Porta" className="h-6 w-16 text-[10px] bg-background border-border rounded-lg" />
+                            </div>
+                          ) : (
+                            <span className="font-mono text-muted-foreground">{l.ip_address || '—'}{l.port ? `:${l.port}` : ''}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5"><span className="flex items-center gap-1.5">{statusDot(l.status)}{statusLabel(l.status)}</span></td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{fmt(l.created_at)}</td>
+                        <td className="px-3 py-2.5">
+                          {editingLicense === l.id ? (
+                            <Input type="datetime-local" value={editLicExpiry} onChange={e => setEditLicExpiry(e.target.value)} className="h-6 w-40 text-[10px] bg-background border-border rounded-lg" />
+                          ) : (
+                            <span className="text-muted-foreground">{fmt(l.expires_at)}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          {editingLicense === l.id ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" className="h-6 text-[10px] bg-foreground text-background rounded-lg" onClick={() => saveEditLicense(l.id)}><Save className="w-3 h-3 mr-1" /> Salvar</Button>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] rounded-lg" onClick={() => setEditingLicense(null)}><X className="w-3 h-3" /></Button>
+                            </div>
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground hover:text-foreground">
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-card border-border text-xs rounded-xl">
+                                <DropdownMenuItem onClick={() => copy(l.license_key)} className="text-xs"><Copy className="w-3 h-3 mr-2" /> Copiar Chave</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => startEditLicense(l)} className="text-xs"><Edit className="w-3 h-3 mr-2" /> Editar</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {l.status !== 'active' && <DropdownMenuItem onClick={() => setStatus(l.id, 'active')} className="text-xs"><CheckCircle className="w-3 h-3 mr-2" /> Ativar</DropdownMenuItem>}
+                                {l.status !== 'suspended' && <DropdownMenuItem onClick={() => setStatus(l.id, 'suspended')} className="text-xs"><AlertCircle className="w-3 h-3 mr-2" /> Suspender</DropdownMenuItem>}
+                                {l.status !== 'revoked' && <DropdownMenuItem onClick={() => setStatus(l.id, 'revoked')} className="text-xs"><XCircle className="w-3 h-3 mr-2" /> Revogar</DropdownMenuItem>}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => delLicense(l.id)} className="text-xs text-destructive"><Trash2 className="w-3 h-3 mr-2" /> Excluir</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -505,7 +532,7 @@ const Admin = () => {
                   <h3 className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Validações Recentes</h3>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto">
                     {validationLogs.slice(0, 12).map(l => (
-                      <div key={l.id} className="flex items-center justify-between py-1.5 px-2 rounded bg-background text-[11px]">
+                      <div key={l.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-background text-[11px]">
                         <div className="flex items-center gap-2">
                           {l.success ? <span className="dot dot-active" /> : <span className="dot dot-revoked" />}
                           <span className="font-mono text-muted-foreground">{l.license_key?.slice(0, 12) || '—'}</span>
@@ -520,7 +547,7 @@ const Admin = () => {
                   <h3 className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Auditoria Recente</h3>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto">
                     {auditLogs.slice(0, 12).map(l => (
-                      <div key={l.id} className="py-1.5 px-2 rounded bg-background text-[11px]">
+                      <div key={l.id} className="py-1.5 px-2 rounded-lg bg-background text-[11px]">
                         <div className="flex justify-between"><span className="font-medium">{l.username}</span><span className="text-muted-foreground">{fmt(l.created_at)}</span></div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <code className="text-[10px] bg-muted px-1 rounded text-muted-foreground">{l.action}</code>
@@ -542,50 +569,50 @@ const Admin = () => {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-card border-b border-border">
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Usuário</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Email</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Cargo</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Plano</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Licenças Hoje</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Último Login</th>
-                      <th className="text-right px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Ações</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Usuário</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Email</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Cargo</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Plano</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Hoje</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Último Login</th>
+                      <th className="text-right px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {staffUsers.map(s => (
-                      <tr key={s.id} className="border-b border-border/50 hover:bg-card/50 transition-colors">
-                        <td className="px-3 py-2 font-medium">{s.username}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{s.email}</td>
-                        <td className="px-3 py-2">
+                      <tr key={s.id} className="border-b border-border/50">
+                        <td className="px-3 py-2.5 font-medium">{s.username}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{s.email}</td>
+                        <td className="px-3 py-2.5">
                           {editingUser === s.id ? (
                             <Select value={editRole} onValueChange={setEditRole}>
-                              <SelectTrigger className="h-7 text-[10px] w-28 bg-background border-border"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-7 text-[10px] w-28 bg-background border-border rounded-lg"><SelectValue /></SelectTrigger>
                               <SelectContent><SelectItem value="staff">Staff</SelectItem><SelectItem value="admin">Admin</SelectItem><SelectItem value="master">Master</SelectItem><SelectItem value="master_plus">Master++</SelectItem></SelectContent>
                             </Select>
                           ) : <span className="text-muted-foreground">{getRoleLabel(s.role)}</span>}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2.5">
                           {editingUser === s.id ? (
                             <Select value={editPlan} onValueChange={setEditPlan}>
-                              <SelectTrigger className="h-7 text-[10px] w-28 bg-background border-border"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-7 text-[10px] w-28 bg-background border-border rounded-lg"><SelectValue /></SelectTrigger>
                               <SelectContent><SelectItem value="standard">Padrão</SelectItem><SelectItem value="master">Master</SelectItem><SelectItem value="master_plus">Master++</SelectItem></SelectContent>
                             </Select>
                           ) : <span className="text-muted-foreground">{getPlanLabel(s.plan)}</span>}
                         </td>
-                        <td className="px-3 py-2 text-muted-foreground">
+                        <td className="px-3 py-2.5 text-muted-foreground">
                           {s.last_license_date === new Date().toISOString().split('T')[0] ? `${s.daily_license_count}/${getPlanLimits(s.plan) === -1 ? '∞' : getPlanLimits(s.plan)}` : '0'}
                         </td>
-                        <td className="px-3 py-2 text-muted-foreground">{fmt(s.last_login)}</td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2.5 text-muted-foreground">{fmt(s.last_login)}</td>
+                        <td className="px-3 py-2.5 text-right">
                           {user?.role === 'master_plus' && s.id !== user?.id && (
                             editingUser === s.id ? (
                               <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" className="h-6 text-[10px] bg-foreground text-background" onClick={() => updateRole(s.id)}><Save className="w-3 h-3 mr-1" /> Salvar</Button>
-                                <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setEditingUser(null)}><X className="w-3 h-3" /></Button>
+                                <Button size="sm" className="h-6 text-[10px] bg-foreground text-background rounded-lg" onClick={() => updateRole(s.id)}><Save className="w-3 h-3 mr-1" /> Salvar</Button>
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] rounded-lg" onClick={() => setEditingUser(null)}><X className="w-3 h-3" /></Button>
                               </div>
                             ) : (
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground hover:text-foreground" onClick={() => { setEditingUser(s.id); setEditRole(s.role); setEditPlan(s.plan); }}>
-                                <Edit className="w-3 h-3 mr-1" /> Gerenciar
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground hover:text-foreground rounded-lg" onClick={() => { setEditingUser(s.id); setEditRole(s.role); setEditPlan(s.plan); }}>
+                                <Edit className="w-3 h-3 mr-1" /> Editar
                               </Button>
                             )
                           )}
@@ -601,14 +628,13 @@ const Admin = () => {
           {/* ── LOGS (Admin) ── */}
           {isAdmin && showAdminControls && (
             <TabsContent value="logs">
-              {/* Filters */}
               <div className="flex flex-col md:flex-row gap-2 mb-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input placeholder="Filtrar por chave, IP, usuário..." value={logFilter} onChange={e => setLogFilter(e.target.value)} className="pl-8 h-8 text-xs bg-card border-border" />
+                  <Input placeholder="Filtrar por chave, IP, usuário..." value={logFilter} onChange={e => setLogFilter(e.target.value)} className="pl-8 h-8 text-xs bg-card border-border rounded-xl" />
                 </div>
                 <Select value={logTypeFilter} onValueChange={setLogTypeFilter}>
-                  <SelectTrigger className="w-36 h-8 text-xs bg-card border-border"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-36 h-8 text-xs bg-card border-border rounded-xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="success">Sucesso</SelectItem>
@@ -618,38 +644,36 @@ const Admin = () => {
               </div>
 
               <Tabs defaultValue="validation" className="w-full">
-                <TabsList className="bg-card border border-border mb-3 h-8">
-                  <TabsTrigger value="validation" className="text-[10px] h-6 data-[state=active]:bg-foreground data-[state=active]:text-background">Validações</TabsTrigger>
-                  <TabsTrigger value="audit" className="text-[10px] h-6 data-[state=active]:bg-foreground data-[state=active]:text-background">Auditoria</TabsTrigger>
-                  <TabsTrigger value="login" className="text-[10px] h-6 data-[state=active]:bg-foreground data-[state=active]:text-background">Login</TabsTrigger>
+                <TabsList className="bg-card border border-border mb-3 h-8 rounded-full p-0.5">
+                  <TabsTrigger value="validation" className="text-[10px] h-6 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">Validações</TabsTrigger>
+                  <TabsTrigger value="audit" className="text-[10px] h-6 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">Auditoria</TabsTrigger>
+                  <TabsTrigger value="login" className="text-[10px] h-6 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">Login</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="validation">
-                  <div className="rounded-md border border-border overflow-hidden">
+                  <div className="rounded-2xl border border-border overflow-hidden">
                     <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-card">
                           <tr className="border-b border-border">
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Status</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Licença</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">IP</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Resultado</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Erro</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Data</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Status</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Licença</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">IP</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Resultado</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Data</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredValidation.map(l => (
-                            <tr key={l.id} className="border-b border-border/30 hover:bg-card/50 transition-colors">
+                            <tr key={l.id} className="border-b border-border/30">
                               <td className="px-3 py-2"><span className={`dot ${l.success ? 'dot-active' : 'dot-revoked'}`} /></td>
                               <td className="px-3 py-2 font-mono text-muted-foreground">{l.license_key?.slice(0, 16) || '—'}</td>
                               <td className="px-3 py-2 font-mono text-muted-foreground">{l.ip_address || '—'}</td>
                               <td className="px-3 py-2">{l.result || '—'}</td>
-                              <td className="px-3 py-2 text-destructive">{l.error_message || '—'}</td>
                               <td className="px-3 py-2 text-muted-foreground">{fmt(l.validated_at)}</td>
                             </tr>
                           ))}
-                          {filteredValidation.length === 0 && <tr><td colSpan={6} className="text-center py-10 text-muted-foreground">Sem resultados</td></tr>}
+                          {filteredValidation.length === 0 && <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">Sem resultados</td></tr>}
                         </tbody>
                       </table>
                     </div>
@@ -657,21 +681,21 @@ const Admin = () => {
                 </TabsContent>
 
                 <TabsContent value="audit">
-                  <div className="rounded-md border border-border overflow-hidden">
+                  <div className="rounded-2xl border border-border overflow-hidden">
                     <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-card">
                           <tr className="border-b border-border">
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Usuário</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Ação</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Detalhes</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">IP</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Data</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Usuário</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Ação</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Detalhes</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">IP</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Data</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredAudit.map(l => (
-                            <tr key={l.id} className="border-b border-border/30 hover:bg-card/50 transition-colors">
+                            <tr key={l.id} className="border-b border-border/30">
                               <td className="px-3 py-2 font-medium">{l.username || '—'}</td>
                               <td className="px-3 py-2"><code className="text-[10px] bg-muted px-1 rounded">{l.action}</code></td>
                               <td className="px-3 py-2 text-muted-foreground max-w-xs truncate">{l.details || '—'}</td>
@@ -687,20 +711,20 @@ const Admin = () => {
                 </TabsContent>
 
                 <TabsContent value="login">
-                  <div className="rounded-md border border-border overflow-hidden">
+                  <div className="rounded-2xl border border-border overflow-hidden">
                     <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-card">
                           <tr className="border-b border-border">
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Status</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Usuário</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">IP</th>
-                            <th className="text-left px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase">Data</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Status</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Usuário</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">IP</th>
+                            <th className="text-left px-3 py-2.5 text-[10px] font-medium text-muted-foreground uppercase">Data</th>
                           </tr>
                         </thead>
                         <tbody>
                           {loginAttempts.map(a => (
-                            <tr key={a.id} className="border-b border-border/30 hover:bg-card/50 transition-colors">
+                            <tr key={a.id} className="border-b border-border/30">
                               <td className="px-3 py-2"><span className={`dot ${a.success ? 'dot-active' : 'dot-revoked'}`} /></td>
                               <td className="px-3 py-2 font-medium">{a.username}</td>
                               <td className="px-3 py-2 font-mono text-muted-foreground">{a.ip_address || '—'}</td>
@@ -723,20 +747,23 @@ const Admin = () => {
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
                 <Webhook className="w-3.5 h-3.5" /> Webhooks
               </h3>
-              <div className="flex flex-col md:flex-row gap-2 mb-5 p-3 rounded-md bg-background border border-border">
+              <p className="text-[10px] text-muted-foreground mb-4">
+                Selecione <strong>"Todos os Eventos"</strong> para receber todas as notificações em uma única URL.
+              </p>
+              <div className="flex flex-col md:flex-row gap-2 mb-5 p-3 rounded-xl bg-background border border-border">
                 <div className="flex-1">
                   <label className="text-[10px] text-muted-foreground">URL</label>
-                  <Input value={newWebhookUrl} onChange={e => setNewWebhookUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." className="mt-1 h-8 text-xs bg-card border-border" />
+                  <Input value={newWebhookUrl} onChange={e => setNewWebhookUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." className="mt-1 h-8 text-xs bg-card border-border rounded-xl" />
                 </div>
-                <div className="w-full md:w-44">
+                <div className="w-full md:w-48">
                   <label className="text-[10px] text-muted-foreground">Evento</label>
                   <Select value={newWebhookEvent} onValueChange={setNewWebhookEvent}>
-                    <SelectTrigger className="mt-1 h-8 text-xs bg-card border-border"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger className="mt-1 h-8 text-xs bg-card border-border rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{WEBHOOK_EVENTS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-end">
-                  <Button onClick={saveWh} className="h-8 bg-foreground text-background hover:bg-foreground/90 text-xs"><Plus className="w-3 h-3 mr-1" /> Adicionar</Button>
+                  <Button onClick={saveWh} className="h-8 bg-foreground text-background hover:bg-foreground/90 text-xs rounded-xl"><Plus className="w-3 h-3 mr-1" /> Adicionar</Button>
                 </div>
               </div>
 
@@ -745,7 +772,7 @@ const Admin = () => {
               ) : (
                 <div className="space-y-1.5">
                   {webhooks.map(wh => (
-                    <div key={wh.id} className="flex items-center gap-3 py-2 px-3 rounded-md bg-background border border-border">
+                    <div key={wh.id} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-background border border-border">
                       <span className={`dot ${wh.enabled ? 'dot-active' : 'dot-expired'}`} />
                       <div className="flex-1 min-w-0">
                         <span className="text-xs font-medium">{WEBHOOK_EVENTS.find(e => e.value === wh.event_type)?.label || wh.event_type}</span>

@@ -1,16 +1,14 @@
 import { motion } from "framer-motion";
-import { Shield, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const HeroSection = () => (
   <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-16">
-    {/* Subtle radial glow */}
     <div className="absolute inset-0 pointer-events-none">
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-foreground/[0.03] blur-[120px]" />
     </div>
 
     <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
-      {/* Badge */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -18,30 +16,27 @@ const HeroSection = () => (
         className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/60 bg-card/60 mb-8"
       >
         <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
-        <span className="text-xs text-muted-foreground tracking-wide">Proteção de Scripts FiveM</span>
+        <span className="text-xs text-muted-foreground tracking-wide">Licenciamento Seguro</span>
       </motion.div>
 
-      {/* Title */}
       <motion.h1
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
         className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] mb-6"
       >
-        Secure<br />Access Pro
+        Athilio<br />Auth
       </motion.h1>
 
-      {/* Sub */}
       <motion.p
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
         className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed"
       >
-        Sistema profissional de autenticação e licenciamento. Proteja seus scripts com segurança real.
+        Gerencie licenças, controle acessos e proteja seus recursos com simplicidade.
       </motion.p>
 
-      {/* CTAs */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -59,7 +54,6 @@ const HeroSection = () => (
         </Button>
       </motion.div>
 
-      {/* Minimal stats */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -70,7 +64,7 @@ const HeroSection = () => (
         <div className="w-px h-8 bg-border/50" />
         <Stat value="<50ms" label="Latência" />
         <div className="w-px h-8 bg-border/50" />
-        <Stat value="AES-256" label="Criptografia" />
+        <Stat value="24/7" label="Monitoramento" />
       </motion.div>
     </div>
 
