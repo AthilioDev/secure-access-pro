@@ -312,11 +312,22 @@ const Admin = () => {
             {planLimit !== -1 && (
               <span className="text-[10px] text-muted-foreground">{usedToday}/{planLimit} licenças hoje</span>
             )}
-            <Button variant="ghost" size="sm" onClick={() => navigate("/downloads")} className="text-xs text-muted-foreground h-7">
+            {isAdmin && (
+              <Button
+                variant={showAdminControls ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowAdminControls((prev) => !prev)}
+                className="text-xs h-8 rounded-full"
+              >
+                <Settings className="w-3.5 h-3.5 mr-1" />
+                {showAdminControls ? 'Fechar Gerenciar' : 'Gerenciar'}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate("/downloads")} className="text-xs text-muted-foreground h-8 rounded-full">
               <Download className="w-3.5 h-3.5 mr-1" /> Downloads
             </Button>
             <span className="text-xs text-muted-foreground hidden md:inline">{user?.username}</span>
-            <Button variant="ghost" size="sm" onClick={() => { logout(); navigate("/"); }} className="text-xs text-muted-foreground h-7 hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={() => { logout(); navigate("/"); }} className="text-xs text-muted-foreground h-8 rounded-full hover:text-foreground">
               <LogOut className="w-3.5 h-3.5" />
             </Button>
           </div>
