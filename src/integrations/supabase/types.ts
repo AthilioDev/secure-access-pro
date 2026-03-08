@@ -161,6 +161,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_webhooks: {
+        Row: {
+          created_at: string | null
+          enabled: boolean
+          event_type: string
+          id: string
+          updated_at: string | null
+          user_id: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean
+          event_type: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       validation_logs: {
         Row: {
           error_message: string | null
