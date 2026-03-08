@@ -29,7 +29,8 @@ local _0x = {
     _timeout = 15000,
     _retries = 3,
     _k = nil,
-    _s = nil
+    _s = nil,
+    _p = nil
 }
 
 -- IP Whitelist (optional - leave empty to skip IP check)
