@@ -353,7 +353,7 @@ const Admin = () => {
                 </TabsTrigger>
               </>
             )}
-            <TabsTrigger value="config" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+            <TabsTrigger value="config" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
               <Settings className="w-3 h-3 mr-1" /> Config
             </TabsTrigger>
           </TabsList>
