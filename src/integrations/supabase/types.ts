@@ -83,6 +83,54 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_bots: {
+        Row: {
+          bot_name: string
+          bot_token_encrypted: string
+          created_at: string
+          id: string
+          is_running: boolean
+          last_started_at: string | null
+          last_stopped_at: string | null
+          log_channel_id: string | null
+          status: string
+          ticket_category_id: string | null
+          tickets_open: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_name?: string
+          bot_token_encrypted: string
+          created_at?: string
+          id?: string
+          is_running?: boolean
+          last_started_at?: string | null
+          last_stopped_at?: string | null
+          log_channel_id?: string | null
+          status?: string
+          ticket_category_id?: string | null
+          tickets_open?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_name?: string
+          bot_token_encrypted?: string
+          created_at?: string
+          id?: string
+          is_running?: boolean
+          last_started_at?: string | null
+          last_stopped_at?: string | null
+          log_channel_id?: string | null
+          status?: string
+          ticket_category_id?: string | null
+          tickets_open?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       licenses: {
         Row: {
           created_at: string | null
