@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { license_key, server_ip, script_name } = await req.json();
+    const { license_key, server_ip, server_port, script_name } = await req.json();
 
     if (!license_key || !script_name) {
       return new Response(
@@ -42,13 +42,12 @@ Deno.serve(async (req) => {
 
     // License not found
     if (!license) {
-      // Log failed validation
       await supabase.from('validation_logs').insert({
         license_key,
         success: false,
-        hwid: null,
         ip_address: server_ip || null,
         error_message: 'LICENSE_NOT_FOUND',
+        result: 'FAILED',
       });
 
       return new Response(
@@ -60,25 +59,20 @@ Deno.serve(async (req) => {
     // Check if expired
     const isExpired = license.expires_at ? new Date(license.expires_at) < new Date() : false;
 
-    // Check status
     if (license.status !== 'active' || isExpired) {
       const errorMsg = isExpired ? 'LICENSE_EXPIRED' : `LICENSE_${license.status.toUpperCase()}`;
-      
-      // Update status to expired if needed
+
       if (isExpired && license.status === 'active') {
-        await supabase
-          .from('licenses')
-          .update({ status: 'expired' })
-          .eq('id', license.id);
+        await supabase.from('licenses').update({ status: 'expired' }).eq('id', license.id);
       }
 
-      // Log failed validation
       await supabase.from('validation_logs').insert({
         license_key,
         license_id: license.id,
         success: false,
         ip_address: server_ip || null,
         error_message: errorMsg,
+        result: 'FAILED',
       });
 
       return new Response(
@@ -87,7 +81,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check IP whitelist (if IP is set on license, only that IP can use it)
+    // Check IP whitelist
     if (license.ip_address && server_ip && license.ip_address !== server_ip) {
       await supabase.from('validation_logs').insert({
         license_key,
@@ -95,10 +89,28 @@ Deno.serve(async (req) => {
         success: false,
         ip_address: server_ip,
         error_message: 'IP_MISMATCH',
+        result: 'FAILED',
       });
 
       return new Response(
         JSON.stringify({ valid: false, expired: false, owner: license.owner_name, error: 'IP_MISMATCH' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check port whitelist
+    if (license.port && server_port && license.port !== server_port) {
+      await supabase.from('validation_logs').insert({
+        license_key,
+        license_id: license.id,
+        success: false,
+        ip_address: server_ip,
+        error_message: 'PORT_MISMATCH',
+        result: 'FAILED',
+      });
+
+      return new Response(
+        JSON.stringify({ valid: false, expired: false, owner: license.owner_name, error: 'PORT_MISMATCH' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -110,6 +122,7 @@ Deno.serve(async (req) => {
         last_validated: new Date().toISOString(),
         validation_count: (license.validation_count || 0) + 1,
         ip_address: server_ip || license.ip_address,
+        port: server_port || license.port,
       })
       .eq('id', license.id);
 
@@ -119,6 +132,7 @@ Deno.serve(async (req) => {
       license_id: license.id,
       success: true,
       ip_address: server_ip || null,
+      result: 'SUCCESS',
     });
 
     return new Response(
