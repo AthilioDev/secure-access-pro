@@ -40,6 +40,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Helper to fire webhooks
+    const fireWebhook = async (eventType: string, data: Record<string, unknown>) => {
+      try {
+        await supabase.functions.invoke('admin-auth', {
+          body: {
+            action: 'fire_webhooks',
+            event_type: eventType,
+            license_data: data,
+            created_by_user_id: license?.created_by || null,
+          }
+        });
+      } catch (e) {
+        console.error('Webhook fire error:', e);
+      }
+    };
+
     // License not found
     if (!license) {
       await supabase.from('validation_logs').insert({
@@ -64,6 +80,7 @@ Deno.serve(async (req) => {
 
       if (isExpired && license.status === 'active') {
         await supabase.from('licenses').update({ status: 'expired' }).eq('id', license.id);
+        await fireWebhook('license_expired', { license_key, owner: license.owner_name, resource: license.resource_name });
       }
 
       await supabase.from('validation_logs').insert({
@@ -133,6 +150,15 @@ Deno.serve(async (req) => {
       success: true,
       ip_address: server_ip || null,
       result: 'SUCCESS',
+    });
+
+    // Fire webhook for successful validation
+    await fireWebhook('license_validated', {
+      license_key,
+      owner: license.owner_name,
+      resource: license.resource_name,
+      ip: server_ip,
+      port: server_port,
     });
 
     return new Response(
