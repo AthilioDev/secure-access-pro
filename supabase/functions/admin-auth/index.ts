@@ -101,17 +101,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // =====================
-    // FETCH DASHBOARD DATA (user-scoped)
+    // FETCH DASHBOARD DATA (scope-aware)
     // =====================
     if (action === 'dashboard') {
-      const { user_id, user_role } = body;
-      const isAdmin = user_role === 'master_plus' || user_role === 'master' || user_role === 'admin';
+      const { user_id, user_role, admin_view } = body;
+      const isAdminUser = user_role === 'master_plus' || user_role === 'master' || user_role === 'admin';
+      const isAdminView = isAdminUser && admin_view === true;
 
-      // Licenses: filter by created_by unless admin
       let licensesQuery = supabase.from('licenses').select('*').order('created_at', { ascending: false });
-      if (!isAdmin && user_id) {
+      if (!isAdminView && user_id) {
         licensesQuery = licensesQuery.eq('created_by', user_id);
+      }
+
+      let validationQuery: Promise<{ data: any[] | null }>;
+      if (isAdminView) {
+        validationQuery = supabase.from('validation_logs').select('*').order('validated_at', { ascending: false }).limit(200);
+      } else if (user_id) {
+        const { data: userLicenses } = await supabase
+          .from('licenses')
+          .select('license_key')
+          .eq('created_by', user_id)
+          .limit(1000);
+
+        const userLicenseKeys = (userLicenses || []).map((l) => l.license_key).filter(Boolean);
+        validationQuery = userLicenseKeys.length > 0
+          ? supabase.from('validation_logs').select('*').in('license_key', userLicenseKeys).order('validated_at', { ascending: false }).limit(200)
+          : Promise.resolve({ data: [] });
+      } else {
+        validationQuery = Promise.resolve({ data: [] });
       }
 
       const [
@@ -123,19 +140,19 @@ Deno.serve(async (req) => {
         { data: webhooks },
       ] = await Promise.all([
         licensesQuery,
-        supabase.from('validation_logs').select('*').order('validated_at', { ascending: false }).limit(200),
-        isAdmin
+        validationQuery,
+        isAdminView
           ? supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200)
           : supabase.from('audit_logs').select('*').eq('user_id', user_id).order('created_at', { ascending: false }).limit(100),
-        isAdmin
+        isAdminView
           ? supabase.from('login_attempts').select('*').order('created_at', { ascending: false }).limit(100)
-          : { data: [] },
-        isAdmin
+          : Promise.resolve({ data: [] }),
+        isAdminView
           ? supabase.from('admin_users').select('id, username, email, role, plan, last_login, created_at, daily_license_count, last_license_date')
-          : { data: [] },
+          : Promise.resolve({ data: [] }),
         user_id
           ? supabase.from('user_webhooks').select('*').eq('user_id', user_id).order('created_at', { ascending: false })
-          : { data: [] },
+          : Promise.resolve({ data: [] }),
       ]);
 
       return new Response(
@@ -148,7 +165,7 @@ Deno.serve(async (req) => {
           adminUsers: adminUsers || [],
           webhooks: webhooks || [],
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
