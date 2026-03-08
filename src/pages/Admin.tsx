@@ -98,6 +98,7 @@ const Admin = () => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
+  const [showAdminControls, setShowAdminControls] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editRole, setEditRole] = useState("");
   const [editPlan, setEditPlan] = useState("");
@@ -120,7 +121,7 @@ const Admin = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('admin-auth', {
-        body: { action: 'dashboard', user_id: user?.id, user_role: user?.role }
+        body: { action: 'dashboard', user_id: user?.id, user_role: user?.role, admin_view: showAdminControls }
       });
       if (error) throw error;
       if (data?.success) {
@@ -131,11 +132,22 @@ const Admin = () => {
         setStaffUsers(data.adminUsers || []);
         setWebhooks(data.webhooks || []);
       }
-    } catch { toast({ title: "Erro ao carregar dados", variant: "destructive" }); }
-    finally { setIsLoading(false); }
+    } catch {
+      toast({ title: "Erro ao carregar dados", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => { if (isAuthenticated) fetchData(); }, [isAuthenticated]);
+  useEffect(() => {
+    if (isAuthenticated) fetchData();
+  }, [isAuthenticated, showAdminControls]);
+
+  useEffect(() => {
+    if (!showAdminControls && ['overview', 'users', 'logs'].includes(activeTab)) {
+      setActiveTab('licenses');
+    }
+  }, [showAdminControls, activeTab]);
 
   const copy = (k: string) => {
     navigator.clipboard.writeText(k); setCopiedKey(k);
@@ -161,7 +173,7 @@ const Admin = () => {
       });
       if (error) throw error;
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'CREATE_LICENSE', details: `${newLic.owner_name} - ${newLic.resource_name}` } });
-      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_created', created_by_user_id: user?.id, license_data: { license_key: key, owner: newLic.owner_name, resource: newLic.resource_name } } });
+      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_created', created_by_user_id: user?.id, initiator_user_id: user?.id, license_data: { license_key: key, owner: newLic.owner_name, resource: newLic.resource_name } } });
       toast({ title: "Licença criada" });
       setIsCreateOpen(false);
       setNewLic({ owner_name: "", owner_email: "", resource_name: "", ip_address: "", port: "", status: "active", expires_at: "" });
@@ -171,14 +183,33 @@ const Admin = () => {
 
   const setStatus = async (id: string, status: string) => {
     try {
-      const { error } = await supabase.from('licenses').update({ status }).eq('id', id);
-      if (error) throw error;
       const lic = licenses.find(l => l.id === id);
+      const payload: { status: string; created_by?: string } = { status };
+      if (!lic?.created_by && user?.id) payload.created_by = user.id;
+
+      const { error } = await supabase.from('licenses').update(payload).eq('id', id);
+      if (error) throw error;
+
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'UPDATE_LICENSE_STATUS', details: `${id} → ${status}` } });
       const evtMap: Record<string, string> = { suspended: 'license_suspended', revoked: 'license_revoked', active: 'license_edited' };
-      if (evtMap[status]) await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: evtMap[status], created_by_user_id: lic?.created_by, license_data: { license_key: lic?.license_key, owner: lic?.owner_name, status } } });
-      toast({ title: "Status atualizado" }); setManageLicense(null); fetchData();
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
+      if (evtMap[status]) {
+        await supabase.functions.invoke('admin-auth', {
+          body: {
+            action: 'fire_webhooks',
+            event_type: evtMap[status],
+            created_by_user_id: lic?.created_by || user?.id,
+            initiator_user_id: user?.id,
+            license_data: { license_key: lic?.license_key, owner: lic?.owner_name, status }
+          }
+        });
+      }
+
+      toast({ title: "Status atualizado" });
+      setManageLicense(null);
+      fetchData();
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
   };
 
   const delLicense = async (id: string) => {
@@ -187,9 +218,21 @@ const Admin = () => {
       const lic = licenses.find(l => l.id === id);
       await supabase.from('licenses').delete().eq('id', id);
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'DELETE_LICENSE', details: `${id}` } });
-      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_deleted', created_by_user_id: lic?.created_by, license_data: { license_key: lic?.license_key, owner: lic?.owner_name } } });
-      toast({ title: "Licença excluída" }); setManageLicense(null); fetchData();
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
+      await supabase.functions.invoke('admin-auth', {
+        body: {
+          action: 'fire_webhooks',
+          event_type: 'license_deleted',
+          created_by_user_id: lic?.created_by || user?.id,
+          initiator_user_id: user?.id,
+          license_data: { license_key: lic?.license_key, owner: lic?.owner_name }
+        }
+      });
+      toast({ title: "Licença excluída" });
+      setManageLicense(null);
+      fetchData();
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    }
   };
 
   const updateRole = async (tid: string) => {
@@ -254,9 +297,9 @@ const Admin = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground admin-rustic">
       {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
+      <header className="border-b border-border bg-card/90 backdrop-blur sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Shield className="w-5 h-5 text-foreground" />
@@ -269,11 +312,22 @@ const Admin = () => {
             {planLimit !== -1 && (
               <span className="text-[10px] text-muted-foreground">{usedToday}/{planLimit} licenças hoje</span>
             )}
-            <Button variant="ghost" size="sm" onClick={() => navigate("/downloads")} className="text-xs text-muted-foreground h-7">
+            {isAdmin && (
+              <Button
+                variant={showAdminControls ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowAdminControls((prev) => !prev)}
+                className="text-xs h-8 rounded-full"
+              >
+                <Settings className="w-3.5 h-3.5 mr-1" />
+                {showAdminControls ? 'Fechar Gerenciar' : 'Gerenciar'}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate("/downloads")} className="text-xs text-muted-foreground h-8 rounded-full">
               <Download className="w-3.5 h-3.5 mr-1" /> Downloads
             </Button>
             <span className="text-xs text-muted-foreground hidden md:inline">{user?.username}</span>
-            <Button variant="ghost" size="sm" onClick={() => { logout(); navigate("/"); }} className="text-xs text-muted-foreground h-7 hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={() => { logout(); navigate("/"); }} className="text-xs text-muted-foreground h-8 rounded-full hover:text-foreground">
               <LogOut className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -282,24 +336,24 @@ const Admin = () => {
 
       <main className="max-w-7xl mx-auto px-4 py-5">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-card border border-border mb-5 h-9">
-            <TabsTrigger value="licenses" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+          <TabsList className="bg-card border border-border mb-5 h-10 rounded-full p-1">
+            <TabsTrigger value="licenses" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
               <Key className="w-3 h-3 mr-1" /> Minhas Licenças
             </TabsTrigger>
-            {isAdmin && (
+            {isAdmin && showAdminControls && (
               <>
-                <TabsTrigger value="overview" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+                <TabsTrigger value="overview" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
                   <BarChart3 className="w-3 h-3 mr-1" /> Admin
                 </TabsTrigger>
-                <TabsTrigger value="users" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+                <TabsTrigger value="users" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
                   <Users className="w-3 h-3 mr-1" /> Usuários
                 </TabsTrigger>
-                <TabsTrigger value="logs" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+                <TabsTrigger value="logs" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
                   <FileText className="w-3 h-3 mr-1" /> Logs
                 </TabsTrigger>
               </>
             )}
-            <TabsTrigger value="config" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+            <TabsTrigger value="config" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
               <Settings className="w-3 h-3 mr-1" /> Config
             </TabsTrigger>
           </TabsList>
@@ -307,7 +361,7 @@ const Admin = () => {
           {/* ── LICENSES ── */}
           <TabsContent value="licenses">
             {planLimit !== -1 && (
-              <div className={`mb-4 p-3 rounded-md border text-xs ${canCreate ? 'border-border text-muted-foreground' : 'border-destructive/30 text-destructive'}`}>
+              <div className={`mb-4 p-3 rounded-2xl border text-xs ${canCreate ? 'border-border text-muted-foreground bg-card/40' : 'border-destructive/30 text-destructive bg-card/40'}`}>
                 {canCreate ? `${planLimit - usedToday} licenças restantes hoje (plano ${getPlanLabel(user?.plan || 'standard')})` : 'Limite diário atingido.'}
               </div>
             )}
@@ -362,7 +416,7 @@ const Admin = () => {
             </div>
 
             {/* Table */}
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="rounded-2xl border border-border overflow-hidden bg-card/40">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -387,7 +441,7 @@ const Admin = () => {
                         <td className="px-3 py-2">
                           <button onClick={() => copy(l.license_key)} className="flex items-center gap-1 group">
                             <code className="font-mono text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">{l.license_key.slice(0, 8)}…</code>
-                            {copiedKey === l.license_key ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-muted-foreground/50 group-hover:text-foreground transition-colors" />}
+                            {copiedKey === l.license_key ? <Check className="w-3 h-3 text-foreground" /> : <Copy className="w-3 h-3 text-muted-foreground/50 group-hover:text-foreground transition-colors" />}
                           </button>
                         </td>
                         <td className="px-3 py-2"><span className="font-medium">{l.owner_name}</span></td>
@@ -423,7 +477,7 @@ const Admin = () => {
           </TabsContent>
 
           {/* ── OVERVIEW (Admin) ── */}
-          {isAdmin && (
+          {isAdmin && showAdminControls && (
             <TabsContent value="overview">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 {[
@@ -436,7 +490,7 @@ const Admin = () => {
                   { label: 'Usuários', value: stats.users, icon: Users },
                   { label: 'Logins Falhos', value: stats.failedLogins, icon: Bell },
                 ].map(s => (
-                  <div key={s.label} className="bg-card border border-border rounded-md p-3">
+                  <div key={s.label} className="bg-card/70 border border-border rounded-2xl p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <s.icon className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</span>
@@ -447,7 +501,7 @@ const Admin = () => {
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-card border border-border rounded-md p-4">
+                <div className="bg-card/70 border border-border rounded-2xl p-4">
                   <h3 className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Validações Recentes</h3>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto">
                     {validationLogs.slice(0, 12).map(l => (
@@ -462,7 +516,7 @@ const Admin = () => {
                     {validationLogs.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">—</p>}
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-md p-4">
+                <div className="bg-card/70 border border-border rounded-2xl p-4">
                   <h3 className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Auditoria Recente</h3>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto">
                     {auditLogs.slice(0, 12).map(l => (
@@ -482,9 +536,9 @@ const Admin = () => {
           )}
 
           {/* ── USERS (Admin) ── */}
-          {isAdmin && (
+          {isAdmin && showAdminControls && (
             <TabsContent value="users">
-              <div className="rounded-md border border-border overflow-hidden">
+              <div className="rounded-2xl border border-border overflow-hidden bg-card/40">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-card border-b border-border">
@@ -545,7 +599,7 @@ const Admin = () => {
           )}
 
           {/* ── LOGS (Admin) ── */}
-          {isAdmin && (
+          {isAdmin && showAdminControls && (
             <TabsContent value="logs">
               {/* Filters */}
               <div className="flex flex-col md:flex-row gap-2 mb-4">
@@ -665,7 +719,7 @@ const Admin = () => {
 
           {/* ── CONFIG (Webhooks) ── */}
           <TabsContent value="config">
-            <div className="bg-card border border-border rounded-md p-5 mb-4">
+            <div className="bg-card/70 border border-border rounded-2xl p-5 mb-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
                 <Webhook className="w-3.5 h-3.5" /> Webhooks
               </h3>
@@ -705,7 +759,7 @@ const Admin = () => {
               )}
             </div>
 
-            <div className="bg-card border border-border rounded-md p-5">
+            <div className="bg-card/70 border border-border rounded-2xl p-5">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">Sua Conta</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                 <div><p className="text-[10px] text-muted-foreground mb-0.5">Usuário</p><p className="font-medium">{user?.username}</p></div>

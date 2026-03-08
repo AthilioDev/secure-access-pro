@@ -5,6 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const WEBHOOK_EVENTS = new Set([
+  'license_created',
+  'license_edited',
+  'license_suspended',
+  'license_revoked',
+  'license_expired',
+  'license_validated',
+  'license_deleted',
+]);
+
+const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -89,17 +101,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // =====================
-    // FETCH DASHBOARD DATA (user-scoped)
+    // FETCH DASHBOARD DATA (scope-aware)
     // =====================
     if (action === 'dashboard') {
-      const { user_id, user_role } = body;
-      const isAdmin = user_role === 'master_plus' || user_role === 'master' || user_role === 'admin';
+      const { user_id, user_role, admin_view } = body;
+      const isAdminUser = user_role === 'master_plus' || user_role === 'master' || user_role === 'admin';
+      const isAdminView = isAdminUser && admin_view === true;
 
-      // Licenses: filter by created_by unless admin
       let licensesQuery = supabase.from('licenses').select('*').order('created_at', { ascending: false });
-      if (!isAdmin && user_id) {
+      if (!isAdminView && user_id) {
         licensesQuery = licensesQuery.eq('created_by', user_id);
+      }
+
+      let validationQuery: Promise<{ data: any[] | null }>;
+      if (isAdminView) {
+        validationQuery = supabase.from('validation_logs').select('*').order('validated_at', { ascending: false }).limit(200);
+      } else if (user_id) {
+        const { data: userLicenses } = await supabase
+          .from('licenses')
+          .select('license_key')
+          .eq('created_by', user_id)
+          .limit(1000);
+
+        const userLicenseKeys = (userLicenses || []).map((l) => l.license_key).filter(Boolean);
+        validationQuery = userLicenseKeys.length > 0
+          ? supabase.from('validation_logs').select('*').in('license_key', userLicenseKeys).order('validated_at', { ascending: false }).limit(200)
+          : Promise.resolve({ data: [] });
+      } else {
+        validationQuery = Promise.resolve({ data: [] });
       }
 
       const [
@@ -111,19 +140,19 @@ Deno.serve(async (req) => {
         { data: webhooks },
       ] = await Promise.all([
         licensesQuery,
-        supabase.from('validation_logs').select('*').order('validated_at', { ascending: false }).limit(200),
-        isAdmin
+        validationQuery,
+        isAdminView
           ? supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200)
           : supabase.from('audit_logs').select('*').eq('user_id', user_id).order('created_at', { ascending: false }).limit(100),
-        isAdmin
+        isAdminView
           ? supabase.from('login_attempts').select('*').order('created_at', { ascending: false }).limit(100)
-          : { data: [] },
-        isAdmin
+          : Promise.resolve({ data: [] }),
+        isAdminView
           ? supabase.from('admin_users').select('id, username, email, role, plan, last_login, created_at, daily_license_count, last_license_date')
-          : { data: [] },
+          : Promise.resolve({ data: [] }),
         user_id
           ? supabase.from('user_webhooks').select('*').eq('user_id', user_id).order('created_at', { ascending: false })
-          : { data: [] },
+          : Promise.resolve({ data: [] }),
       ]);
 
       return new Response(
@@ -136,7 +165,7 @@ Deno.serve(async (req) => {
           adminUsers: adminUsers || [],
           webhooks: webhooks || [],
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
@@ -165,11 +194,24 @@ Deno.serve(async (req) => {
     // =====================
     if (action === 'update_user_role') {
       const { target_user_id, new_role, new_plan, admin_user_id, admin_username } = body;
-      
-      if (!target_user_id || !new_role || !new_plan) {
+
+      if (!target_user_id || !new_role || !new_plan || !admin_user_id) {
         return new Response(
           JSON.stringify({ success: false, error: 'Missing fields' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      const { data: actor, error: actorError } = await supabase
+        .from('admin_users')
+        .select('id, role')
+        .eq('id', admin_user_id)
+        .maybeSingle();
+
+      if (actorError || !actor || actor.role !== 'master_plus') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { status: 403, headers: jsonHeaders }
         );
       }
 
@@ -181,7 +223,7 @@ Deno.serve(async (req) => {
       if (error) {
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to update user' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: jsonHeaders }
         );
       }
 
@@ -195,7 +237,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
@@ -208,12 +250,32 @@ Deno.serve(async (req) => {
       if (!whUserId || !event_type) {
         return new Response(
           JSON.stringify({ success: false, error: 'Missing fields' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      if (!WEBHOOK_EVENTS.has(event_type)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid event type' }),
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      try {
+        if (webhook_url) {
+          const parsedUrl = new URL(webhook_url);
+          if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+            throw new Error('Invalid protocol');
+          }
+        }
+      } catch {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid webhook URL' }),
+          { status: 400, headers: jsonHeaders }
         );
       }
 
       if (webhook_id) {
-        // Update existing
         const { error } = await supabase
           .from('user_webhooks')
           .update({ webhook_url, enabled, updated_at: new Date().toISOString() })
@@ -223,11 +285,10 @@ Deno.serve(async (req) => {
         if (error) {
           return new Response(
             JSON.stringify({ success: false, error: 'Failed to update webhook' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: jsonHeaders }
           );
         }
       } else {
-        // Create new
         const { error } = await supabase
           .from('user_webhooks')
           .insert({ user_id: whUserId, webhook_url, event_type, enabled: enabled !== false });
@@ -235,14 +296,14 @@ Deno.serve(async (req) => {
         if (error) {
           return new Response(
             JSON.stringify({ success: false, error: 'Failed to create webhook' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: jsonHeaders }
           );
         }
       }
 
       return new Response(
         JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
@@ -272,31 +333,31 @@ Deno.serve(async (req) => {
     // FIRE WEBHOOKS (called internally from verify-license)
     // =====================
     if (action === 'fire_webhooks') {
-      const { event_type: evtType, license_data, created_by_user_id } = body;
+      const { event_type: evtType, license_data, created_by_user_id, initiator_user_id } = body;
 
-      if (!evtType) {
+      if (!evtType || !WEBHOOK_EVENTS.has(evtType)) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Missing event_type' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: false, error: 'Missing or invalid event_type' }),
+          { status: 400, headers: jsonHeaders }
         );
       }
 
-      // Get webhooks for the user who created this license
-      let userId = created_by_user_id;
-      
+      // Get webhooks owner (license creator by default; falls back to initiator)
+      let userId = created_by_user_id || initiator_user_id || null;
+
       if (!userId && license_data?.license_key) {
         const { data: lic } = await supabase
           .from('licenses')
           .select('created_by')
           .eq('license_key', license_data.license_key)
           .maybeSingle();
-        userId = lic?.created_by;
+        userId = lic?.created_by || initiator_user_id || null;
       }
 
       if (!userId) {
         return new Response(
-          JSON.stringify({ success: true, fired: 0 }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: true, fired: 0, failed: [] }),
+          { status: 200, headers: jsonHeaders }
         );
       }
 
@@ -308,28 +369,46 @@ Deno.serve(async (req) => {
         .eq('enabled', true);
 
       let fired = 0;
+      const failed: Array<{ webhook_id: string; status?: number; error?: string }> = [];
+
       if (hooks && hooks.length > 0) {
         for (const hook of hooks) {
           try {
-            await fetch(hook.webhook_url, {
+            const payload = {
+              event: evtType,
+              timestamp: new Date().toISOString(),
+              user_id: userId,
+              data: license_data || {},
+            };
+
+            const isDiscordWebhook = hook.webhook_url.includes('discord.com/api/webhooks');
+            const requestBody = isDiscordWebhook
+              ? JSON.stringify({
+                  content: `Secure Access Pro · ${evtType}\n\
+\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 1700)}\n\`\`\``,
+                })
+              : JSON.stringify(payload);
+
+            const response = await fetch(hook.webhook_url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                event: evtType,
-                timestamp: new Date().toISOString(),
-                data: license_data || {},
-              }),
+              body: requestBody,
             });
-            fired++;
+
+            if (response.ok) {
+              fired++;
+            } else {
+              failed.push({ webhook_id: hook.id, status: response.status });
+            }
           } catch (e) {
-            console.error('Webhook fire error:', e);
+            failed.push({ webhook_id: hook.id, error: String(e) });
           }
         }
       }
 
       return new Response(
-        JSON.stringify({ success: true, fired }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, fired, failed }),
+        { status: 200, headers: jsonHeaders }
       );
     }
 
