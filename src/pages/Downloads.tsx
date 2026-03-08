@@ -34,7 +34,7 @@ const Downloads = () => {
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
-    toast({ title: "Download iniciado", description: filename });
+    toast({ title: `${filename} baixado` });
   };
 
   const copyToClipboard = (content: string, type: 'lua' | 'json') => {
@@ -44,63 +44,65 @@ const Downloads = () => {
     toast({ title: "Copiado!" });
   };
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" /></div>;
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-5 h-5 border-2 border-muted-foreground/20 border-t-foreground rounded-full animate-spin" /></div>;
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background admin-rustic">
-      <header className="border-b border-border/40 bg-card/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Shield className="w-5 h-5" />
+    <div className="min-h-screen bg-background admin-bg bg-noise">
+      <header className="border-b border-border/30 bg-card/60 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-3xl mx-auto px-6 h-12 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
             <span className="text-sm font-semibold">Downloads</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="text-xs text-muted-foreground rounded-full h-8">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="text-xs text-muted-foreground h-8">
             <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Voltar
           </Button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="rounded-2xl border border-border/40 bg-card/30 p-6 mb-6">
-          <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
+      <main className="max-w-3xl mx-auto px-6 py-8">
+        {/* Quick start */}
+        <div className="glass-card p-5 mb-5">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <FileCode className="w-4 h-4 text-muted-foreground" />
             Integração Rápida
           </h2>
-          <div className="grid md:grid-cols-3 gap-5 text-xs text-muted-foreground">
-            <div><p className="text-foreground font-medium mb-1">1. Baixe ou copie</p><p>Obtenha o <code className="bg-secondary px-1 rounded">server.lua</code> e <code className="bg-secondary px-1 rounded">license.json</code>.</p></div>
-            <div><p className="text-foreground font-medium mb-1">2. Coloque no resource</p><p>Mova ambos para a pasta raiz do seu resource.</p></div>
-            <div><p className="text-foreground font-medium mb-1">3. Inicie</p><p>A validação ocorre automaticamente ao iniciar.</p></div>
+          <div className="grid md:grid-cols-3 gap-4 text-[11px] text-muted-foreground">
+            <div><p className="text-foreground font-medium mb-0.5">1. Baixe ou copie</p><p>Obtenha o <code className="bg-secondary px-1 rounded text-[10px]">server.lua</code> e <code className="bg-secondary px-1 rounded text-[10px]">license.json</code>.</p></div>
+            <div><p className="text-foreground font-medium mb-0.5">2. Coloque no resource</p><p>Mova ambos para a pasta raiz do seu resource.</p></div>
+            <div><p className="text-foreground font-medium mb-0.5">3. Inicie</p><p>A validação ocorre automaticamente.</p></div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/40 bg-card/30 p-6">
-          <h2 className="text-base font-semibold mb-5 flex items-center gap-2">
+        {/* Generator */}
+        <div className="glass-card p-5">
+          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <FileCode className="w-4 h-4 text-muted-foreground" />
             Gerar Arquivos
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-3 mb-5">
+          <div className="grid md:grid-cols-2 gap-3 mb-4">
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Chave de Licença</label>
-              <Input value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)} placeholder="Cole a chave da licença" className="mt-1 h-9 text-xs bg-background border-border rounded-xl" />
+              <Input value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)} className="mt-1 h-8 text-xs bg-background border-border rounded-lg" />
             </div>
             <div>
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Nome do Script (resource)</label>
-              <Input value={scriptName} onChange={(e) => setScriptName(e.target.value)} placeholder="Ex: meu-script" className="mt-1 h-9 text-xs bg-background border-border rounded-xl" />
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Nome do Script</label>
+              <Input value={scriptName} onChange={(e) => setScriptName(e.target.value)} className="mt-1 h-8 text-xs bg-background border-border rounded-lg" />
             </div>
           </div>
 
           {/* server.lua */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-medium">server.lua</span>
               <div className="flex gap-1.5">
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(SERVER_LUA_TEMPLATE(apiUrl), 'lua')} className="h-7 text-[10px] rounded-full border-border/60">
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(SERVER_LUA_TEMPLATE(apiUrl), 'lua')} className="h-7 text-[10px] border-border/50">
                   {copiedLua ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                   {copiedLua ? 'Copiado' : 'Copiar'}
                 </Button>
-                <Button size="sm" onClick={() => downloadFile(SERVER_LUA_TEMPLATE(apiUrl), "server.lua")} className="h-7 text-[10px] bg-foreground text-background hover:bg-foreground/90 rounded-full">
+                <Button size="sm" onClick={() => downloadFile(SERVER_LUA_TEMPLATE(apiUrl), "server.lua")} className="h-7 text-[10px] bg-foreground text-background hover:bg-foreground/90">
                   <Download className="w-3 h-3 mr-1" /> Baixar
                 </Button>
               </div>
@@ -108,22 +110,22 @@ const Downloads = () => {
           </div>
 
           {/* license.json */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-medium">license.json</span>
               <div className="flex gap-1.5">
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(LICENSE_JSON_TEMPLATE(licenseKey, scriptName), 'json')} className="h-7 text-[10px] rounded-full border-border/60">
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(LICENSE_JSON_TEMPLATE(licenseKey, scriptName), 'json')} className="h-7 text-[10px] border-border/50">
                   {copiedJson ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                   {copiedJson ? 'Copiado' : 'Copiar'}
                 </Button>
-                <Button size="sm" onClick={() => downloadFile(LICENSE_JSON_TEMPLATE(licenseKey, scriptName), "license.json")} className="h-7 text-[10px] bg-foreground text-background hover:bg-foreground/90 rounded-full">
+                <Button size="sm" onClick={() => downloadFile(LICENSE_JSON_TEMPLATE(licenseKey, scriptName), "license.json")} className="h-7 text-[10px] bg-foreground text-background hover:bg-foreground/90">
                   <Download className="w-3 h-3 mr-1" /> Baixar
                 </Button>
               </div>
             </div>
           </div>
 
-          <p className="text-[10px] text-muted-foreground/60">Não compartilhe sua chave de licença.</p>
+          <p className="text-[10px] text-muted-foreground/50 mt-2">Não compartilhe sua chave de licença.</p>
         </div>
       </main>
     </div>
