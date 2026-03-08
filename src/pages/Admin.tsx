@@ -501,7 +501,7 @@ const Admin = () => {
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-card border border-border rounded-md p-4">
+                <div className="bg-card/70 border border-border rounded-2xl p-4">
                   <h3 className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Validações Recentes</h3>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto">
                     {validationLogs.slice(0, 12).map(l => (
