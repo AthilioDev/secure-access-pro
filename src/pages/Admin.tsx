@@ -340,15 +340,15 @@ const Admin = () => {
             <TabsTrigger value="licenses" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
               <Key className="w-3 h-3 mr-1" /> Minhas Licenças
             </TabsTrigger>
-            {isAdmin && (
+            {isAdmin && showAdminControls && (
               <>
-                <TabsTrigger value="overview" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+                <TabsTrigger value="overview" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
                   <BarChart3 className="w-3 h-3 mr-1" /> Admin
                 </TabsTrigger>
-                <TabsTrigger value="users" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+                <TabsTrigger value="users" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
                   <Users className="w-3 h-3 mr-1" /> Usuários
                 </TabsTrigger>
-                <TabsTrigger value="logs" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
+                <TabsTrigger value="logs" className="text-xs h-7 rounded-full data-[state=active]:bg-foreground data-[state=active]:text-background">
                   <FileText className="w-3 h-3 mr-1" /> Logs
                 </TabsTrigger>
               </>
