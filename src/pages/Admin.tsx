@@ -719,7 +719,7 @@ const Admin = () => {
 
           {/* ── CONFIG (Webhooks) ── */}
           <TabsContent value="config">
-            <div className="bg-card border border-border rounded-md p-5 mb-4">
+            <div className="bg-card/70 border border-border rounded-2xl p-5 mb-4">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
                 <Webhook className="w-3.5 h-3.5" /> Webhooks
               </h3>
