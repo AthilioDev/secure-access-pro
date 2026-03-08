@@ -123,6 +123,7 @@ local function _validate(attempt)
     local payload = json.encode({
         license_key = _0x._k,
         server_ip = serverIP,
+        server_port = _0x._p,
         script_name = _0x._s
     })
 
