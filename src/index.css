@@ -54,12 +54,27 @@
 }
 
 @layer components {
+  .admin-rustic {
+    background-image:
+      radial-gradient(circle at 15% 20%, hsl(var(--foreground) / 0.04), transparent 34%),
+      radial-gradient(circle at 85% 0%, hsl(var(--foreground) / 0.03), transparent 28%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--card)) 75%);
+  }
+
+  .admin-rustic table tbody tr {
+    @apply transition-colors;
+  }
+
+  .admin-rustic table tbody tr:hover {
+    @apply bg-secondary/60;
+  }
+
   /* Minimal status dots */
   .dot {
     @apply w-1.5 h-1.5 rounded-full inline-block;
   }
-  .dot-active { @apply bg-emerald-400; }
-  .dot-suspended { @apply bg-amber-400; }
-  .dot-revoked { @apply bg-red-400; }
-  .dot-expired { @apply bg-muted-foreground; }
+  .dot-active { @apply bg-foreground; }
+  .dot-suspended { @apply bg-muted-foreground; }
+  .dot-revoked { @apply bg-destructive; }
+  .dot-expired { @apply bg-muted-foreground/70; }
 }
