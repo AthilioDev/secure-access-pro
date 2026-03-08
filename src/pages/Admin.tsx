@@ -336,7 +336,7 @@ const Admin = () => {
 
       <main className="max-w-7xl mx-auto px-4 py-5">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-card border border-border mb-5 h-9">
+          <TabsList className="bg-card border border-border mb-5 h-10 rounded-full p-1">
             <TabsTrigger value="licenses" className="text-xs h-7 data-[state=active]:bg-foreground data-[state=active]:text-background">
               <Key className="w-3 h-3 mr-1" /> Minhas Licenças
             </TabsTrigger>
