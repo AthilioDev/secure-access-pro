@@ -297,7 +297,7 @@ const Admin = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground admin-rustic">
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
