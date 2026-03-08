@@ -333,31 +333,31 @@ Deno.serve(async (req) => {
     // FIRE WEBHOOKS (called internally from verify-license)
     // =====================
     if (action === 'fire_webhooks') {
-      const { event_type: evtType, license_data, created_by_user_id } = body;
+      const { event_type: evtType, license_data, created_by_user_id, initiator_user_id } = body;
 
-      if (!evtType) {
+      if (!evtType || !WEBHOOK_EVENTS.has(evtType)) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Missing event_type' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: false, error: 'Missing or invalid event_type' }),
+          { status: 400, headers: jsonHeaders }
         );
       }
 
-      // Get webhooks for the user who created this license
-      let userId = created_by_user_id;
-      
+      // Get webhooks owner (license creator by default; falls back to initiator)
+      let userId = created_by_user_id || initiator_user_id || null;
+
       if (!userId && license_data?.license_key) {
         const { data: lic } = await supabase
           .from('licenses')
           .select('created_by')
           .eq('license_key', license_data.license_key)
           .maybeSingle();
-        userId = lic?.created_by;
+        userId = lic?.created_by || initiator_user_id || null;
       }
 
       if (!userId) {
         return new Response(
-          JSON.stringify({ success: true, fired: 0 }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: true, fired: 0, failed: [] }),
+          { status: 200, headers: jsonHeaders }
         );
       }
 
@@ -369,28 +369,36 @@ Deno.serve(async (req) => {
         .eq('enabled', true);
 
       let fired = 0;
+      const failed: Array<{ webhook_id: string; status?: number; error?: string }> = [];
+
       if (hooks && hooks.length > 0) {
         for (const hook of hooks) {
           try {
-            await fetch(hook.webhook_url, {
+            const response = await fetch(hook.webhook_url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 event: evtType,
                 timestamp: new Date().toISOString(),
+                user_id: userId,
                 data: license_data || {},
               }),
             });
-            fired++;
+
+            if (response.ok) {
+              fired++;
+            } else {
+              failed.push({ webhook_id: hook.id, status: response.status });
+            }
           } catch (e) {
-            console.error('Webhook fire error:', e);
+            failed.push({ webhook_id: hook.id, error: String(e) });
           }
         }
       }
 
       return new Response(
-        JSON.stringify({ success: true, fired }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, fired, failed }),
+        { status: 200, headers: jsonHeaders }
       );
     }
 
