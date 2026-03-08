@@ -490,7 +490,7 @@ const Admin = () => {
                   { label: 'Usuários', value: stats.users, icon: Users },
                   { label: 'Logins Falhos', value: stats.failedLogins, icon: Bell },
                 ].map(s => (
-                  <div key={s.label} className="bg-card border border-border rounded-md p-3">
+                  <div key={s.label} className="bg-card/70 border border-border rounded-2xl p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <s.icon className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</span>
