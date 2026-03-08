@@ -441,7 +441,7 @@ const Admin = () => {
                         <td className="px-3 py-2">
                           <button onClick={() => copy(l.license_key)} className="flex items-center gap-1 group">
                             <code className="font-mono text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">{l.license_key.slice(0, 8)}…</code>
-                            {copiedKey === l.license_key ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-muted-foreground/50 group-hover:text-foreground transition-colors" />}
+                            {copiedKey === l.license_key ? <Check className="w-3 h-3 text-foreground" /> : <Copy className="w-3 h-3 text-muted-foreground/50 group-hover:text-foreground transition-colors" />}
                           </button>
                         </td>
                         <td className="px-3 py-2"><span className="font-medium">{l.owner_name}</span></td>
