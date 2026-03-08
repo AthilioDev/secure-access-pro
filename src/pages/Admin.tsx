@@ -759,7 +759,7 @@ const Admin = () => {
               )}
             </div>
 
-            <div className="bg-card border border-border rounded-md p-5">
+            <div className="bg-card/70 border border-border rounded-2xl p-5">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">Sua Conta</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                 <div><p className="text-[10px] text-muted-foreground mb-0.5">Usuário</p><p className="font-medium">{user?.username}</p></div>
