@@ -538,7 +538,7 @@ const Admin = () => {
           {/* ── USERS (Admin) ── */}
           {isAdmin && showAdminControls && (
             <TabsContent value="users">
-              <div className="rounded-md border border-border overflow-hidden">
+              <div className="rounded-2xl border border-border overflow-hidden bg-card/40">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-card border-b border-border">
