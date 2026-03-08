@@ -5,18 +5,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory rate limiter (resets per cold start)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 60;
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                   req.headers.get('cf-connecting-ip') || 'unknown';
+
   try {
-    const { license_key, server_ip, server_port, script_name } = await req.json();
+    // Rate limit check
+    if (!checkRateLimit(clientIP)) {
+      return new Response(
+        JSON.stringify({ valid: false, message: 'Rate limit exceeded. Try again later.', error: 'RATE_LIMITED' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { license_key, server_ip, server_port, script_name, hwid } = await req.json();
 
     if (!license_key || !script_name) {
       return new Response(
-        JSON.stringify({ valid: false, expired: false, owner: null, error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ valid: false, message: 'Missing required fields', error: 'MISSING_FIELDS' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -34,10 +62,7 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error('Database error:', error);
-      return new Response(
-        JSON.stringify({ valid: false, expired: false, owner: null, error: 'Database error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return respond(false, 'Database error', 'DATABASE_ERROR', null, supabase, license_key, clientIP, script_name, hwid, startTime);
     }
 
     // Helper to fire webhooks
@@ -58,22 +83,15 @@ Deno.serve(async (req) => {
 
     // License not found
     if (!license) {
-      await supabase.from('validation_logs').insert({
-        license_key,
-        success: false,
-        ip_address: server_ip || null,
-        error_message: 'LICENSE_NOT_FOUND',
-        result: 'FAILED',
-      });
-
-      return new Response(
-        JSON.stringify({ valid: false, expired: false, owner: null, error: 'LICENSE_NOT_FOUND' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      await logVerification(supabase, license_key, clientIP, script_name, hwid, false, 'LICENSE_NOT_FOUND', startTime);
+      return respond(false, 'License not found', 'LICENSE_NOT_FOUND', null, supabase, license_key, clientIP, script_name, hwid, startTime, true);
     }
 
     // Check if expired
-    const isExpired = license.expires_at ? new Date(license.expires_at) < new Date() : false;
+    const now = new Date();
+    const isExpired = license.expires_at ? new Date(license.expires_at) < now : false;
+    const expiresAt = license.expires_at ? new Date(license.expires_at) : null;
+    const daysRemaining = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / 86400000)) : null;
 
     if (license.status !== 'active' || isExpired) {
       const errorMsg = isExpired ? 'LICENSE_EXPIRED' : `LICENSE_${license.status.toUpperCase()}`;
@@ -83,94 +101,113 @@ Deno.serve(async (req) => {
         await fireWebhook('license_expired', { license_key, owner: license.owner_name, resource: license.resource_name });
       }
 
-      await supabase.from('validation_logs').insert({
-        license_key,
-        license_id: license.id,
-        success: false,
-        ip_address: server_ip || null,
-        error_message: errorMsg,
-        result: 'FAILED',
-      });
-
+      await logVerification(supabase, license_key, clientIP, script_name, hwid, false, errorMsg, startTime, license.id);
       return new Response(
-        JSON.stringify({ valid: false, expired: isExpired, owner: license.owner_name, error: errorMsg }),
+        JSON.stringify({
+          valid: false, message: errorMsg, error: errorMsg,
+          expiration_date: license.expires_at, days_remaining: 0,
+          script_name: license.resource_name, owner: license.owner_name,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check HWID
+    if (hwid && license.hwid && license.hwid !== hwid) {
+      await logVerification(supabase, license_key, clientIP, script_name, hwid, false, 'HWID_MISMATCH', startTime, license.id);
+      return new Response(
+        JSON.stringify({ valid: false, message: 'Hardware ID mismatch', error: 'HWID_MISMATCH', owner: license.owner_name }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Check IP whitelist
     if (license.ip_address && server_ip && license.ip_address !== server_ip) {
-      await supabase.from('validation_logs').insert({
-        license_key,
-        license_id: license.id,
-        success: false,
-        ip_address: server_ip,
-        error_message: 'IP_MISMATCH',
-        result: 'FAILED',
-      });
-
+      await logVerification(supabase, license_key, clientIP, script_name, hwid, false, 'IP_MISMATCH', startTime, license.id);
       return new Response(
-        JSON.stringify({ valid: false, expired: false, owner: license.owner_name, error: 'IP_MISMATCH' }),
+        JSON.stringify({ valid: false, message: 'IP address mismatch', error: 'IP_MISMATCH', owner: license.owner_name }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check port whitelist
+    // Check port
     if (license.port && server_port && license.port !== server_port) {
-      await supabase.from('validation_logs').insert({
-        license_key,
-        license_id: license.id,
-        success: false,
-        ip_address: server_ip,
-        error_message: 'PORT_MISMATCH',
-        result: 'FAILED',
-      });
-
+      await logVerification(supabase, license_key, clientIP, script_name, hwid, false, 'PORT_MISMATCH', startTime, license.id);
       return new Response(
-        JSON.stringify({ valid: false, expired: false, owner: license.owner_name, error: 'PORT_MISMATCH' }),
+        JSON.stringify({ valid: false, message: 'Port mismatch', error: 'PORT_MISMATCH', owner: license.owner_name }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // License is valid — update stats
-    await supabase
-      .from('licenses')
-      .update({
-        last_validated: new Date().toISOString(),
-        validation_count: (license.validation_count || 0) + 1,
-        ip_address: server_ip || license.ip_address,
-        port: server_port || license.port,
-      })
-      .eq('id', license.id);
+    const updates: Record<string, unknown> = {
+      last_validated: now.toISOString(),
+      validation_count: (license.validation_count || 0) + 1,
+    };
+    if (server_ip && !license.ip_address) updates.ip_address = server_ip;
+    if (server_port && !license.port) updates.port = server_port;
+    if (hwid && !license.hwid) updates.hwid = hwid;
 
-    // Log successful validation
-    await supabase.from('validation_logs').insert({
-      license_key,
-      license_id: license.id,
-      success: true,
-      ip_address: server_ip || null,
-      result: 'SUCCESS',
-    });
+    await supabase.from('licenses').update(updates).eq('id', license.id);
 
-    // Fire webhook for successful validation
+    // Log successful verification
+    await logVerification(supabase, license_key, clientIP, script_name, hwid, true, null, startTime, license.id);
+
+    // Fire webhook
     await fireWebhook('license_validated', {
-      license_key,
-      owner: license.owner_name,
-      resource: license.resource_name,
-      ip: server_ip,
-      port: server_port,
+      license_key, owner: license.owner_name, resource: license.resource_name,
+      ip: server_ip, port: server_port,
     });
 
     return new Response(
-      JSON.stringify({ valid: true, expired: false, owner: license.owner_name }),
+      JSON.stringify({
+        valid: true,
+        message: 'License valid',
+        owner: license.owner_name,
+        expiration_date: license.expires_at,
+        days_remaining: daysRemaining,
+        script_name: license.resource_name,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ valid: false, expired: false, owner: null, error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ valid: false, message: 'Internal server error', error: 'INTERNAL_ERROR' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+async function logVerification(
+  supabase: any, licenseKey: string, ip: string, scriptName: string,
+  hwid: string | null, success: boolean, errorMsg: string | null,
+  startTime: number, licenseId?: string, skipLog?: boolean
+) {
+  if (skipLog) return;
+  const responseTime = Date.now() - startTime;
+  try {
+    await supabase.from('validation_logs').insert({
+      license_key: licenseKey,
+      license_id: licenseId || null,
+      ip_address: ip,
+      success,
+      error_message: errorMsg,
+      result: success ? 'SUCCESS' : 'FAILED',
+    });
+  } catch (e) {
+    console.error('Log insert error:', e);
+  }
+}
+
+function respond(
+  valid: boolean, message: string, error: string | null, owner: string | null,
+  _supabase: any, _key: string, _ip: string, _script: string, _hwid: string | null,
+  _start: number, _logged = false
+) {
+  return new Response(
+    JSON.stringify({ valid, message, error, owner }),
+    { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Content-Type': 'application/json' } }
+  );
+}

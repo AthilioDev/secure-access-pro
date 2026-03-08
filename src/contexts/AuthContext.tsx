@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthState, getStoredAuth, loginAdmin, logoutAdmin, AdminUser } from '@/lib/auth';
+import { AuthState, getStoredAuth, loginAdmin, logoutAdmin, registerUser, refreshSessionExpiry, AdminUser } from '@/lib/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: AdminUser | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string, email: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -25,8 +26,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
+  // Refresh session on activity
+  useEffect(() => {
+    if (!authState.isAuthenticated) return;
+    const handler = () => refreshSessionExpiry();
+    window.addEventListener('click', handler);
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('click', handler);
+      window.removeEventListener('keydown', handler);
+    };
+  }, [authState.isAuthenticated]);
+
   const login = async (username: string, password: string) => {
     const newAuth = await loginAdmin(username, password);
+    setAuthState(newAuth);
+  };
+
+  const register = async (username: string, password: string, email: string) => {
+    const newAuth = await registerUser(username, password, email);
     setAuthState(newAuth);
   };
 
@@ -41,6 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user: authState.user,
       isLoading,
       login,
+      register,
       logout
     }}>
       {children}
