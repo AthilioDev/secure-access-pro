@@ -1,36 +1,35 @@
 import { Shield, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5">
-          <Shield className="w-6 h-6 text-foreground" />
-          <span className="text-base font-bold tracking-tight">Athilio Auth</span>
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-xl">
+      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2">
+          <Shield className="w-5 h-5" />
+          <span className="text-sm font-bold tracking-tight">Athilio Auth</span>
         </a>
 
-        <nav className="hidden md:flex items-center gap-8">
-          <NavLink href="#features">Recursos</NavLink>
-          <NavLink href="#how">Como Funciona</NavLink>
-          <NavLink href="#pricing">Planos</NavLink>
+        <nav className="hidden md:flex items-center gap-6">
+          <a href="#features" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
+          <a href="#how" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Como Funciona</a>
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="text-sm text-muted-foreground hover:text-foreground" asChild>
+        <div className="hidden md:flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-8" asChild>
             <a href="/login">Login</a>
           </Button>
-          <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-5 text-sm" asChild>
+          <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90 rounded-lg px-4 h-8 text-xs font-medium" asChild>
             <a href="/login">Começar</a>
           </Button>
         </div>
 
-        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen(!open)}>
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={() => setOpen(!open)}>
+          {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
         </Button>
       </div>
 
@@ -40,12 +39,11 @@ const Header = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-xl px-6 py-4 space-y-3"
+            className="md:hidden border-t border-border/30 bg-background/95 backdrop-blur-xl px-6 py-4 space-y-3"
           >
-            <NavLink href="#features">Recursos</NavLink>
-            <NavLink href="#how">Como Funciona</NavLink>
-            <NavLink href="#pricing">Planos</NavLink>
-            <Button size="sm" className="w-full bg-foreground text-background hover:bg-foreground/90 rounded-full mt-2" asChild>
+            <a href="#features" className="text-sm text-muted-foreground block">Recursos</a>
+            <a href="#how" className="text-sm text-muted-foreground block">Como Funciona</a>
+            <Button size="sm" className="w-full bg-foreground text-background hover:bg-foreground/90 rounded-lg mt-2" asChild>
               <a href="/login">Acessar Painel</a>
             </Button>
           </motion.nav>
@@ -54,11 +52,5 @@ const Header = () => {
     </header>
   );
 };
-
-const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <a href={href} className="text-sm text-muted-foreground hover:text-foreground transition-colors block md:inline">
-    {children}
-  </a>
-);
 
 export default Header;

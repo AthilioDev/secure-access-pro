@@ -18,34 +18,33 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      toast({ title: "Erro", description: "Preencha todos os campos", variant: "destructive" });
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
     setIsLoading(true);
     try {
       await login(username.trim(), password);
-      toast({ title: "Login realizado" });
       navigate("/admin");
     } catch (error) {
-      toast({ title: "Erro", description: error instanceof Error ? error.message : "Credenciais inválidas", variant: "destructive" });
+      toast({ title: "Credenciais inválidas", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background admin-rustic px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background admin-bg bg-noise px-4">
       <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur p-7">
-          <div className="text-center mb-7">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-secondary border border-border/50 mb-4">
-              <Shield className="w-5 h-5 text-foreground" />
+        <div className="glass-card p-6">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-secondary border border-border/40 mb-3">
+              <Shield className="w-5 h-5" />
             </div>
-            <h1 className="text-lg font-bold">Secure Access Pro</h1>
-            <p className="text-xs text-muted-foreground mt-1">Acesse o painel</p>
+            <h1 className="text-base font-bold">Athilio Auth</h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Acesse o painel</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Usuário</label>
               <div className="relative mt-1">
@@ -55,7 +54,7 @@ const Login = () => {
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   placeholder="Username"
-                  className="pl-9 h-10 text-sm bg-background border-border rounded-xl"
+                  className="pl-9 h-9 text-sm bg-background border-border rounded-lg"
                 />
               </div>
             </div>
@@ -68,24 +67,20 @@ const Login = () => {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Password"
-                  className="pl-9 pr-10 h-10 text-sm bg-background border-border rounded-xl"
+                  className="pl-9 pr-10 h-9 text-sm bg-background border-border rounded-lg"
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full h-10 bg-foreground text-background hover:bg-foreground/90 rounded-xl text-sm font-medium" disabled={isLoading}>
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-              ) : (
-                <>Entrar<ArrowRight className="w-4 h-4 ml-1.5" /></>
-              )}
+            <Button type="submit" className="w-full h-9 bg-foreground text-background hover:bg-foreground/90 rounded-lg text-sm font-medium" disabled={isLoading}>
+              {isLoading ? <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" /> : <>Entrar <ArrowRight className="w-3.5 h-3.5 ml-1" /></>}
             </Button>
           </form>
 
-          <div className="mt-5 text-center">
-            <a href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Voltar ao site</a>
+          <div className="mt-4 text-center">
+            <a href="/" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">← Voltar</a>
           </div>
         </div>
       </div>

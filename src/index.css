@@ -6,35 +6,38 @@
 
 @layer base {
   :root {
-    --background: 0 0% 3%;
-    --foreground: 0 0% 95%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 96%;
 
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 0 0% 95%;
-    --primary-foreground: 0 0% 3%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 50%;
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 96%;
 
-    --destructive: 0 60% 48%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 0 0% 40%;
+    --success: 142 72% 42%;
+    --warning: 38 92% 50%;
 
-    --radius: 0.75rem;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 30%;
+
+    --radius: 0.625rem;
   }
 }
 
@@ -42,44 +45,48 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
   }
-
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
 }
 
 @layer components {
-  /* Subtle background noise for premium feel */
   .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
   }
 
-  /* Admin background */
-  .admin-rustic {
+  .admin-bg {
     background-image:
-      radial-gradient(circle at 15% 20%, hsl(var(--foreground) / 0.03), transparent 34%),
-      radial-gradient(circle at 85% 0%, hsl(var(--foreground) / 0.02), transparent 28%);
+      radial-gradient(circle at 15% 15%, hsl(var(--foreground) / 0.02), transparent 40%),
+      radial-gradient(circle at 85% 5%, hsl(var(--foreground) / 0.015), transparent 30%);
   }
 
-  .admin-rustic table tbody tr {
-    @apply transition-colors;
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-sm border border-border/60 rounded-xl;
   }
 
-  .admin-rustic table tbody tr:hover {
-    @apply bg-secondary/60;
-  }
-
-  /* Status dots */
+  /* Status indicators */
   .dot {
-    @apply w-1.5 h-1.5 rounded-full inline-block;
+    @apply w-2 h-2 rounded-full inline-block;
   }
-  .dot-active { @apply bg-foreground; }
-  .dot-suspended { @apply bg-muted-foreground; }
-  .dot-revoked { @apply bg-destructive; }
-  .dot-expired { @apply bg-muted-foreground/60; }
+  .dot-active { background-color: hsl(var(--success)); }
+  .dot-suspended { background-color: hsl(var(--warning)); }
+  .dot-revoked { background-color: hsl(var(--destructive)); }
+  .dot-expired { @apply bg-muted-foreground/40; }
+  .dot-offline { @apply bg-muted-foreground/30; }
+
+  /* Stat card */
+  .stat-card {
+    @apply glass-card p-4 flex flex-col gap-1;
+  }
+  .stat-card .stat-label {
+    @apply text-[11px] text-muted-foreground font-medium uppercase tracking-wider;
+  }
+  .stat-card .stat-value {
+    @apply text-2xl font-bold;
+  }
 }
