@@ -1,105 +1,87 @@
 import { motion } from "framer-motion";
-import { Shield, Lock, Zap, ArrowRight } from "lucide-react";
+import { Shield, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const HeroSection = () => {
-  return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Background Effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: "1s" }} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_hsl(220_20%_4%)_70%)]" />
-      </div>
+const HeroSection = () => (
+  <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-16">
+    {/* Subtle radial glow */}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-foreground/[0.03] blur-[120px]" />
+    </div>
 
-      {/* Grid Pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px),
-                           linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px'
-        }}
-      />
+    <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
+      {/* Badge */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/60 bg-card/60 mb-8"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
+        <span className="text-xs text-muted-foreground tracking-wide">Proteção de Scripts FiveM</span>
+      </motion.div>
 
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border/50 mb-8"
-          >
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-sm text-muted-foreground">Sistema Profissional de Autenticação</span>
-          </motion.div>
+      {/* Title */}
+      <motion.h1
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1 }}
+        className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] mb-6"
+      >
+        Secure<br />Access Pro
+      </motion.h1>
 
-          {/* Title */}
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
-          >
-            <span className="gradient-text text-glow">Auth Guard</span>
-            <br />
-            <span className="text-foreground">Pro</span>
-          </motion.h1>
+      {/* Sub */}
+      <motion.p
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed"
+      >
+        Sistema profissional de autenticação e licenciamento. Proteja seus scripts com segurança real.
+      </motion.p>
 
-          {/* Description */}
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
-          >
-            Sistema avançado de autenticação e licenciamento para{" "}
-            <span className="text-primary font-medium">FiveM</span>. Proteja seus scripts 
-            com segurança de nível empresarial e gerenciamento de licenças em tempo real.
-          </motion.p>
+      {/* CTAs */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="flex flex-col sm:flex-row items-center justify-center gap-3"
+      >
+        <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-12 text-sm font-medium group" asChild>
+          <a href="/login">
+            Acessar Painel
+            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+          </a>
+        </Button>
+        <Button variant="outline" size="lg" className="rounded-full px-8 h-12 text-sm border-border/60" asChild>
+          <a href="#features">Ver Recursos</a>
+        </Button>
+      </motion.div>
 
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-          >
-            <Button variant="hero" size="xl" className="group">
-              Começar Gratuitamente
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="outline" size="xl">
-              Ver Documentação
-            </Button>
-          </motion.div>
+      {/* Minimal stats */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+        className="mt-20 flex items-center justify-center gap-12 text-center"
+      >
+        <Stat value="99.9%" label="Uptime" />
+        <div className="w-px h-8 bg-border/50" />
+        <Stat value="<50ms" label="Latência" />
+        <div className="w-px h-8 bg-border/50" />
+        <Stat value="AES-256" label="Criptografia" />
+      </motion.div>
+    </div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="grid grid-cols-3 gap-8 max-w-lg mx-auto"
-          >
-            <StatItem icon={Shield} value="99.9%" label="Uptime" />
-            <StatItem icon={Lock} value="256-bit" label="Encriptação" />
-            <StatItem icon={Zap} value="<50ms" label="Latência" />
-          </motion.div>
-        </div>
-      </div>
+    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
+  </section>
+);
 
-      {/* Bottom Gradient */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
-    </section>
-  );
-};
-
-const StatItem = ({ icon: Icon, value, label }: { icon: any; value: string; label: string }) => (
-  <div className="text-center">
-    <Icon className="w-5 h-5 text-primary mx-auto mb-2" />
-    <div className="text-2xl font-bold text-foreground">{value}</div>
-    <div className="text-sm text-muted-foreground">{label}</div>
+const Stat = ({ value, label }: { value: string; label: string }) => (
+  <div>
+    <div className="text-lg md:text-xl font-bold">{value}</div>
+    <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
   </div>
 );
 

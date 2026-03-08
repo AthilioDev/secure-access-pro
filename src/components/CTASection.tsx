@@ -1,86 +1,45 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Shield, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const CTASection = () => {
-  return (
-    <section id="pricing" className="py-32 relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_hsl(220_20%_4%)_80%)]" />
-      </div>
+const CTASection = () => (
+  <section id="pricing" className="py-28 relative">
+    <div className="max-w-6xl mx-auto px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="max-w-2xl mx-auto text-center rounded-3xl border border-border/50 bg-card/40 p-12 md:p-16"
+      >
+        <h2 className="text-3xl md:text-5xl font-bold mb-4">
+          Pronto para proteger?
+        </h2>
+        <p className="text-muted-foreground text-base mb-8 max-w-md mx-auto">
+          Acesse o painel, gere suas licenças e proteja seus scripts FiveM agora mesmo.
+        </p>
 
-      <div className="container mx-auto px-6 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto"
-        >
-          {/* Main CTA Card */}
-          <div className="gradient-border rounded-3xl p-8 md:p-16 text-center">
-            {/* Icon */}
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 4, repeat: Infinity }}
-              className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-8"
-            >
-              <Shield className="w-10 h-10 text-primary" />
-            </motion.div>
+        <div className="inline-flex items-baseline gap-2 mb-8">
+          <span className="text-4xl md:text-5xl font-black">Grátis</span>
+          <span className="text-muted-foreground text-sm">/para sempre</span>
+        </div>
 
-            {/* Heading */}
-            <h2 className="text-4xl md:text-6xl font-bold mb-6">
-              Pronto para{" "}
-              <span className="gradient-text text-glow">proteger</span>
-              <br />
-              seus scripts?
-            </h2>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 rounded-full px-8 h-12 text-sm font-medium group" asChild>
+            <a href="/login">
+              Começar Agora
+              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+            </a>
+          </Button>
+        </div>
 
-            <p className="text-muted-foreground text-lg md:text-xl mb-10 max-w-2xl mx-auto">
-              Junte-se a centenas de desenvolvedores que já confiam no Auth Guard Pro
-              para proteger seus projetos FiveM.
-            </p>
-
-            {/* Pricing */}
-            <div className="inline-flex items-baseline gap-2 mb-10">
-              <span className="text-muted-foreground line-through text-lg">R$99</span>
-              <span className="text-5xl md:text-6xl font-bold gradient-text">Grátis</span>
-              <span className="text-muted-foreground">/para sempre</span>
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button variant="hero" size="xl" className="group w-full sm:w-auto">
-                <Sparkles className="w-5 h-5" />
-                Começar Agora
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button variant="outline" size="xl" className="w-full sm:w-auto">
-                Falar com Suporte
-              </Button>
-            </div>
-
-            {/* Trust Badges */}
-            <div className="mt-12 pt-8 border-t border-border/30">
-              <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-                <TrustBadge>✓ Setup em 5 minutos</TrustBadge>
-                <TrustBadge>✓ Sem cartão de crédito</TrustBadge>
-                <TrustBadge>✓ Suporte 24/7</TrustBadge>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-};
-
-const TrustBadge = ({ children }: { children: React.ReactNode }) => (
-  <span className="flex items-center gap-2">
-    {children}
-  </span>
+        <div className="mt-8 pt-6 border-t border-border/30 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+          <span>✓ Setup em minutos</span>
+          <span>✓ Sem cartão de crédito</span>
+          <span>✓ Webhooks incluídos</span>
+        </div>
+      </motion.div>
+    </div>
+  </section>
 );
 
 export default CTASection;
