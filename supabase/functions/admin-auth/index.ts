@@ -250,12 +250,32 @@ Deno.serve(async (req) => {
       if (!whUserId || !event_type) {
         return new Response(
           JSON.stringify({ success: false, error: 'Missing fields' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      if (!WEBHOOK_EVENTS.has(event_type)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid event type' }),
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+
+      try {
+        if (webhook_url) {
+          const parsedUrl = new URL(webhook_url);
+          if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+            throw new Error('Invalid protocol');
+          }
+        }
+      } catch {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid webhook URL' }),
+          { status: 400, headers: jsonHeaders }
         );
       }
 
       if (webhook_id) {
-        // Update existing
         const { error } = await supabase
           .from('user_webhooks')
           .update({ webhook_url, enabled, updated_at: new Date().toISOString() })
@@ -265,11 +285,10 @@ Deno.serve(async (req) => {
         if (error) {
           return new Response(
             JSON.stringify({ success: false, error: 'Failed to update webhook' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: jsonHeaders }
           );
         }
       } else {
-        // Create new
         const { error } = await supabase
           .from('user_webhooks')
           .insert({ user_id: whUserId, webhook_url, event_type, enabled: enabled !== false });
@@ -277,14 +296,14 @@ Deno.serve(async (req) => {
         if (error) {
           return new Response(
             JSON.stringify({ success: false, error: 'Failed to create webhook' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: jsonHeaders }
           );
         }
       }
 
       return new Response(
         JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: jsonHeaders }
       );
     }
 
