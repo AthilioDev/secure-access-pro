@@ -516,7 +516,7 @@ const Admin = () => {
                     {validationLogs.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">—</p>}
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-md p-4">
+                <div className="bg-card/70 border border-border rounded-2xl p-4">
                   <h3 className="text-xs font-medium mb-3 text-muted-foreground uppercase tracking-wider">Auditoria Recente</h3>
                   <div className="space-y-1.5 max-h-64 overflow-y-auto">
                     {auditLogs.slice(0, 12).map(l => (
