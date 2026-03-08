@@ -121,7 +121,7 @@ const Admin = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('admin-auth', {
-        body: { action: 'dashboard', user_id: user?.id, user_role: user?.role }
+        body: { action: 'dashboard', user_id: user?.id, user_role: user?.role, admin_view: showAdminControls }
       });
       if (error) throw error;
       if (data?.success) {
@@ -132,11 +132,22 @@ const Admin = () => {
         setStaffUsers(data.adminUsers || []);
         setWebhooks(data.webhooks || []);
       }
-    } catch { toast({ title: "Erro ao carregar dados", variant: "destructive" }); }
-    finally { setIsLoading(false); }
+    } catch {
+      toast({ title: "Erro ao carregar dados", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => { if (isAuthenticated) fetchData(); }, [isAuthenticated]);
+  useEffect(() => {
+    if (isAuthenticated) fetchData();
+  }, [isAuthenticated, showAdminControls]);
+
+  useEffect(() => {
+    if (!showAdminControls && ['overview', 'users', 'logs'].includes(activeTab)) {
+      setActiveTab('licenses');
+    }
+  }, [showAdminControls, activeTab]);
 
   const copy = (k: string) => {
     navigator.clipboard.writeText(k); setCopiedKey(k);
