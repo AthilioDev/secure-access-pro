@@ -173,7 +173,7 @@ const Admin = () => {
       });
       if (error) throw error;
       await supabase.functions.invoke('admin-auth', { body: { action: 'audit', user_id: user?.id, audit_username: user?.username, audit_action: 'CREATE_LICENSE', details: `${newLic.owner_name} - ${newLic.resource_name}` } });
-      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_created', created_by_user_id: user?.id, license_data: { license_key: key, owner: newLic.owner_name, resource: newLic.resource_name } } });
+      await supabase.functions.invoke('admin-auth', { body: { action: 'fire_webhooks', event_type: 'license_created', created_by_user_id: user?.id, initiator_user_id: user?.id, license_data: { license_key: key, owner: newLic.owner_name, resource: newLic.resource_name } } });
       toast({ title: "Licença criada" });
       setIsCreateOpen(false);
       setNewLic({ owner_name: "", owner_email: "", resource_name: "", ip_address: "", port: "", status: "active", expires_at: "" });
